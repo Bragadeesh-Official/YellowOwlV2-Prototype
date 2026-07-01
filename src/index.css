@@ -1,0 +1,280 @@
+@import url('https://fonts.googleapis.com/css2?family=Andika:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-yellow-owl: #FFEA11;
+  --color-teal-owl: #2AD5B4;
+  --color-yellow-owl-dark: #E6D200;
+  --color-teal-owl-dark: #1FBFA0;
+  --font-andika: 'Andika', system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  font-family: 'Andika', system-ui, sans-serif;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Andika', system-ui, sans-serif;
+  background-color: #fffdf2;
+  color: #1f2937;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.bg-yellow-owl { background-color: #FFEA11; }
+.bg-teal-owl { background-color: #2AD5B4; }
+.text-yellow-owl { color: #FFEA11; }
+.text-teal-owl { color: #2AD5B4; }
+.border-yellow-owl { border-color: #FFEA11; }
+.border-teal-owl { border-color: #2AD5B4; }
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #2AD5B4; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #1FBFA0; }
+
+/* Owl card */
+.owl-card {
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(42, 213, 180, 0.15);
+  background: white;
+}
+
+/* Button styles */
+.btn-primary {
+  background-color: #FFEA11;
+  color: #1a1a1a;
+  border-radius: 50px;
+  padding: 12px 32px;
+  font-weight: 700;
+  font-size: 1rem;
+  font-family: 'Andika', system-ui, sans-serif;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-primary:hover {
+  background-color: #E6D200;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 234, 17, 0.5);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-yellow, .btn-secondary {
+  background-color: #2AD5B4;
+  color: white;
+  border-radius: 50px;
+  padding: 12px 32px;
+  font-weight: 700;
+  font-size: 1rem;
+  font-family: 'Andika', system-ui, sans-serif;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-yellow:hover, .btn-secondary:hover {
+  background-color: #1FBFA0;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(42, 213, 180, 0.4);
+}
+
+/* Animated background bubbles */
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.15;
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+/* Star animation */
+@keyframes twinkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+.star-animate { animation: twinkle 2s ease-in-out infinite; }
+
+/* Pop in */
+@keyframes popIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pop-in { animation: popIn 0.4s ease forwards; }
+
+/* Shake */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 50%, 90% { transform: translateX(-6px); }
+  30%, 70% { transform: translateX(6px); }
+}
+.shake { animation: shake 0.5s ease; }
+
+/* Bounce in */
+@keyframes bounceIn {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.bounce-in { animation: bounceIn 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards; }
+
+/* Slide up */
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.slide-up { animation: slideUp 0.4s ease forwards; }
+
+/* Choice card */
+.choice-card {
+  transition: all 0.25s ease;
+  cursor: pointer;
+  border: 3px solid transparent;
+  border-radius: 16px;
+}
+.choice-card:hover {
+  transform: translateY(-4px) scale(1.03);
+  border-color: #2AD5B4;
+  box-shadow: 0 12px 30px rgba(42, 213, 180, 0.2);
+}
+.choice-card.selected {
+  border-color: #FFEA11;
+  background: #FFFDE7;
+  box-shadow: 0 8px 24px rgba(255, 234, 17, 0.35);
+  transform: translateY(-2px) scale(1.02);
+}
+
+/* Gradient bg */
+.gradient-bg {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fffbeb 100%);
+}
+
+/* Timer ring */
+.timer-critical { color: #ef4444; animation: twinkle 0.5s ease-in-out infinite; }
+
+/* Admin Sidebar Nav Link */
+.admin-nav-btn {
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  padding: 10px 14px;
+  border-radius: 12px;
+  text-align: left;
+  font-family: 'Andika', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  background: transparent;
+  color: #475569;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.admin-nav-btn:hover {
+  background: rgba(255, 234, 17, 0.15);
+  color: #B8A800;
+  transform: translateX(2px);
+}
+.admin-nav-btn.active {
+  background: #FFEA11;
+  color: #1a1a1a;
+  font-weight: 800;
+  box-shadow: 0 4px 12px rgba(255, 234, 17, 0.35);
+}
+
+.admin-ghost-btn {
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  padding: 9px 14px;
+  border-radius: 10px;
+  text-align: left;
+  font-family: 'Andika', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  background: transparent;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+.admin-ghost-btn:hover {
+  background: rgba(226, 232, 240, 0.5);
+  color: #334155;
+}
+.admin-ghost-btn.danger {
+  color: #ef4444;
+}
+.admin-ghost-btn.danger:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+@media (max-width: 640px) {
+  .btn-primary, .btn-yellow {
+    padding: 10px 24px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Premium Bubbly Back Button */
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 20px;
+  background-color: white;
+  border: 2.5px solid #fef3c7;
+  color: #b45309; /* amber-700 */
+  font-weight: 800;
+  font-size: 13px;
+  box-shadow: 0 4px 10px rgba(254, 243, 199, 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Andika', system-ui, sans-serif;
+  text-decoration: none;
+}
+.btn-back:hover {
+  transform: translateY(-2px);
+  border-color: #fde047; /* yellow-300 */
+  box-shadow: 0 6px 14px rgba(254, 243, 199, 0.7);
+  background-color: #fffdf2;
+}
+.btn-back:active {
+  transform: translateY(0);
+}
+
+@keyframes completedDot {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+.completed-dot-anim {
+  animation: completedDot 0.4s ease-out;
+}
+
