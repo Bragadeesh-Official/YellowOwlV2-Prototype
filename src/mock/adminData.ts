@@ -9,11 +9,17 @@ export interface School {
   id: string;
   name: string;
   branch: string;
-  board: 'CBSE' | 'Stateboard';
+  board: 'CBSE' | 'Stateboard' | 'ICSE' | 'IB';
   address: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
   contactEmail?: string;
   contactPhone?: string;
   numberOfGrades?: number;
+  gradeNames?: string[];
 }
 
 export interface AdminUser {
@@ -34,21 +40,42 @@ export const MOCK_SCHOOLS: School[] = [
     name: 'Sunrise Academy',
     branch: 'Anna Nagar',
     board: 'CBSE',
-    address: '12 Main Road, Anna Nagar, Chennai – 600 040',
+    address: '12 Main Road, Anna Nagar, Chennai, Tamil Nadu – 600040',
+    addressLine1: '12 Main Road',
+    addressLine2: 'Anna Nagar',
+    city: 'Chennai',
+    state: 'Tamil Nadu',
+    pincode: '600040',
+    numberOfGrades: 5,
+    gradeNames: ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7'],
   },
   {
     id: 's2',
     name: 'Heritage High School',
     branch: 'T Nagar',
     board: 'Stateboard',
-    address: '45 Park Street, T Nagar, Chennai – 600 017',
+    address: '45 Park Street, T Nagar, Chennai, Tamil Nadu – 600017',
+    addressLine1: '45 Park Street',
+    addressLine2: 'T Nagar',
+    city: 'Chennai',
+    state: 'Tamil Nadu',
+    pincode: '600017',
+    numberOfGrades: 5,
+    gradeNames: ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7'],
   },
   {
     id: 's3',
     name: 'Green Valley School',
     branch: 'Velachery',
     board: 'CBSE',
-    address: '8 Lake View Road, Velachery, Chennai – 600 042',
+    address: '8 Lake View Road, Velachery, Chennai, Tamil Nadu – 600042',
+    addressLine1: '8 Lake View Road',
+    addressLine2: 'Velachery',
+    city: 'Chennai',
+    state: 'Tamil Nadu',
+    pincode: '600042',
+    numberOfGrades: 5,
+    gradeNames: ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7'],
   },
 ];
 

@@ -2,8 +2,8 @@ import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { useApp } from '@/context/AppContext';
-import { MOCK_INVITE_CODE, PROFILE_KEY, MOCK_CHILD_PROFILE } from '@/mock/userData';
-import { ADMIN_CREDENTIALS, ADMIN_SESSION_KEY } from '@/mock/adminData';
+import { PROFILE_KEY, MOCK_CHILD_PROFILE } from '@/mock/userData';
+import { ADMIN_SESSION_KEY } from '@/mock/adminData';
 import logo from '@/assets/yellowowllogo.png';
 
 // More circles, spread across the full viewport
@@ -26,17 +26,21 @@ const BUBBLES = [
   { size: 55, top: '50%', left: '50%', bg: '#2AD5B4' },
 ];
 
-type LoginMode = 'choose' | 'child' | 'admin';
+type LoginMode = 'choose' | 'student-login-choice' | 'student-login-code' | 'student-login-mobile' | 'admin';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { register } = useApp();
+  const { register, login } = useApp();
 
   const [mode, setMode] = useState<LoginMode>('choose');
 
   // Child login state
   const [inviteCode, setInviteCode] = useState('');
   const [childError, setChildError] = useState(false);
+
+  // Child mobile login state
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [mobileError, setMobileError] = useState('');
 
   // Admin login state
   const [adminEmail, setAdminEmail] = useState('');
@@ -85,45 +89,74 @@ export default function LoginPage() {
     }
   };
 
-  const handleChildSubmit = (e: React.FormEvent) => {
+  const handleChildCodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const code = inviteCode.trim();
-    if (code === MOCK_INVITE_CODE) {
-      setChildError(false);
-      const savedProfileStr = localStorage.getItem(PROFILE_KEY);
-      let p = savedProfileStr ? JSON.parse(savedProfileStr) : null;
-      if (!p) {
-        p = { ...MOCK_CHILD_PROFILE, passwordEnv: 'desert', passwordAnimal: 'camel', name: 'Alex' };
-      } else {
-        p.passwordEnv = 'desert';
-        p.passwordAnimal = 'camel';
-      }
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
-      register(p);
-      navigate('/image-password');
-    } else {
+    if (!code) {
       setChildError(true);
       shakeCard();
+      return;
     }
+    
+    // Remove auths check on student login - accept any code!
+    setChildError(false);
+    const savedProfileStr = localStorage.getItem(PROFILE_KEY);
+    let p = savedProfileStr ? JSON.parse(savedProfileStr) : null;
+    if (!p) {
+      p = { ...MOCK_CHILD_PROFILE, passwordEnv: 'desert', passwordAnimal: 'camel', name: 'Alex' };
+    } else {
+      p.passwordEnv = 'desert';
+      p.passwordAnimal = 'camel';
+    }
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+    register(p);
+    login(); // directly log in
+    navigate('/dashboard'); // go straight to dashboard
+  };
+
+  const handleChildMobileSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const num = mobileNumber.trim();
+    if (!/^\d{10}$/.test(num)) {
+      setMobileError('Please enter a valid 10-digit mobile number.');
+      shakeCard();
+      return;
+    }
+
+    // Remove auths check on student login - accept any mobile number!
+    setMobileError('');
+    const savedProfileStr = localStorage.getItem(PROFILE_KEY);
+    let p = savedProfileStr ? JSON.parse(savedProfileStr) : null;
+    if (!p) {
+      p = { ...MOCK_CHILD_PROFILE, passwordEnv: 'desert', passwordAnimal: 'camel', name: 'Alex', guardianPhone: num };
+    } else {
+      p.guardianPhone = num;
+      p.passwordEnv = 'desert';
+      p.passwordAnimal = 'camel';
+    }
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+    register(p);
+    login(); // directly log in
+    navigate('/dashboard'); // go straight to dashboard
   };
 
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      adminEmail.trim().toLowerCase() === ADMIN_CREDENTIALS.email.toLowerCase() &&
-      adminPassword === ADMIN_CREDENTIALS.password
-    ) {
-      localStorage.setItem(ADMIN_SESSION_KEY, 'active');
-      navigate('/admin');
-    } else {
-      setAdminError('Invalid email or password. Please try again.');
+    if (!adminEmail.trim()) {
+      setAdminError('Please enter email.');
       shakeCard();
+      return;
     }
+    // Remove auths check on admin login - accept any credentials!
+    setAdminError('');
+    localStorage.setItem(ADMIN_SESSION_KEY, 'active');
+    navigate('/admin');
   };
 
   const switchMode = (m: LoginMode) => {
     setMode(m);
     setChildError(false);
+    setMobileError('');
     setAdminError('');
   };
 
@@ -200,9 +233,9 @@ export default function LoginPage() {
                     cursor: 'pointer',
                     fontFamily: 'Andika, system-ui, sans-serif',
                   }}
-                  onClick={() => switchMode('child')}
+                  onClick={() => switchMode('student-login-choice')}
                 >
-                  I already have a code! (Log In)
+                  Already Registered
                 </button>
 
                 <button
@@ -234,9 +267,60 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* ── Child login ── */}
-            {mode === 'child' && (
-              <form onSubmit={handleChildSubmit} className="flex flex-col gap-5 animate-pop-in">
+            {/* ── Student Login Choice ── */}
+            {mode === 'student-login-choice' && (
+              <div className="flex flex-col gap-5 animate-pop-in">
+                <div className="mb-2">
+                  <h2 className="text-2xl font-black text-gray-800">Welcome back!</h2>
+                  <p className="text-gray-400 text-sm mt-1">Choose how you want to log in</p>
+                </div>
+
+                <button
+                  type="button"
+                  className="w-full text-base py-4 font-black rounded-2xl transition-all hover:scale-[1.02] active:scale-95"
+                  style={{
+                    backgroundColor: '#FFEA11',
+                    border: 'none',
+                    color: '#1a1a1a',
+                    boxShadow: '0 4px 14px rgba(255, 234, 17, 0.35)',
+                    cursor: 'pointer',
+                    fontFamily: 'Andika, system-ui, sans-serif',
+                  }}
+                  onClick={() => switchMode('student-login-code')}
+                >
+                  Login with Code
+                </button>
+
+                <button
+                  type="button"
+                  className="w-full text-base py-4 font-black rounded-2xl transition-all hover:scale-[1.02] active:scale-95"
+                  style={{
+                    backgroundColor: 'white',
+                    border: '2px solid #FFEA11',
+                    color: '#B8A800',
+                    boxShadow: '0 4px 14px rgba(255, 234, 17, 0.12)',
+                    cursor: 'pointer',
+                    fontFamily: 'Andika, system-ui, sans-serif',
+                  }}
+                  onClick={() => switchMode('student-login-mobile')}
+                >
+                  Login with Mobile Number
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => switchMode('choose')}
+                  className="font-bold text-sm text-gray-400 hover:text-[#B8A800] transition-colors text-center mt-2"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  ← Back
+                </button>
+              </div>
+            )}
+
+            {/* ── Student Login Code ── */}
+            {mode === 'student-login-code' && (
+              <form onSubmit={handleChildCodeSubmit} className="flex flex-col gap-5 animate-pop-in">
                 <div>
                   <h2 className="text-2xl font-black text-gray-800 mb-1">Enter your code</h2>
                   <p className="text-gray-400 text-sm">Type in the secret code from your teacher or parent.</p>
@@ -257,7 +341,7 @@ export default function LoginPage() {
                   />
                   {childError && (
                     <p className="mt-2 text-red-500 text-sm font-semibold">
-                      Oops! That's not the right code. Try again!
+                      Please enter a secret code.
                     </p>
                   )}
                 </div>
@@ -269,7 +353,52 @@ export default function LoginPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => switchMode('choose')}
+                  onClick={() => switchMode('student-login-choice')}
+                  className="font-bold text-sm text-gray-400 hover:text-[#B8A800] transition-colors text-center"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  ← Back
+                </button>
+              </form>
+            )}
+
+            {/* ── Student Login Mobile ── */}
+            {mode === 'student-login-mobile' && (
+              <form onSubmit={handleChildMobileSubmit} className="flex flex-col gap-5 animate-pop-in">
+                <div>
+                  <h2 className="text-2xl font-black text-gray-800 mb-1">Enter Mobile Number</h2>
+                  <p className="text-gray-400 text-sm">Type in your guardian's mobile number.</p>
+                </div>
+                <div>
+                  <input
+                    type="tel"
+                    value={mobileNumber}
+                    onChange={(e) => { setMobileNumber(e.target.value.replace(/\D/g, '')); setMobileError(''); }}
+                    placeholder="10-digit mobile number"
+                    maxLength={10}
+                    className="w-full border-2 rounded-xl p-3 text-lg outline-none transition-all focus:border-[#FFEA11]"
+                    style={{
+                      borderColor: mobileError ? '#ef4444' : '#FFEA11',
+                      fontFamily: 'Andika, system-ui, sans-serif',
+                    }}
+                    autoComplete="tel"
+                    autoFocus
+                  />
+                  {mobileError && (
+                    <p className="mt-2 text-red-500 text-sm font-semibold">
+                      {mobileError}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  className="btn-primary w-full"
+                >
+                  Let's Go!
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMode('student-login-choice')}
                   className="font-bold text-sm text-gray-400 hover:text-[#B8A800] transition-colors text-center"
                   style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                 >

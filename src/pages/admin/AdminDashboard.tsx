@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ADMIN_SESSION_KEY, MOCK_SCHOOLS, MOCK_ADMIN_USERS, type School, type AdminUser } from '@/mock/adminData';
 import SchoolsSection from './SchoolsSection';
+import UsersSection from './UsersSection';
 import logo from '@/assets/yellowowllogo.png';
 
-type Section = 'schools';
+type Section = 'schools' | 'users';
 
 const NAV_ITEMS: { key: Section; label: string; short: string }[] = [
   { key: 'schools', label: 'Tenants', short: 'Te' },
+  { key: 'users', label: 'Users', short: 'Us' },
 ];
 
 export default function AdminDashboard() {
@@ -141,6 +143,9 @@ export default function AdminDashboard() {
       <main style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
         {section === 'schools' && (
           <SchoolsSection schools={schools} setSchools={updateSchools} users={users} setUsers={updateUsers} />
+        )}
+        {section === 'users' && (
+          <UsersSection users={users} setUsers={updateUsers} schools={schools} />
         )}
       </main>
     </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { type AdminUser } from '@/mock/adminData';
 import Stepper from './Stepper';
+import { Pencil, Trash2 } from 'lucide-react';
 
 type View = 'list' | 'create' | 'edit';
 
@@ -14,7 +15,7 @@ interface UserForm {
 
 const EMPTY: UserForm = { childName: '', age: '', sessionTime: '', guardianMobile: '', guardianEmail: '' };
 const STEPS = ['Child Info', 'Guardian Info', 'Review'];
-const AGES = Array.from({ length: 14 }, (_, i) => i + 5);
+const AGES = [9, 10, 11, 12, 13];
 const SESSION_OPTS = [15, 20, 25, 30];
 
 function genId() { return 'u' + Math.random().toString(36).slice(2, 9); }
@@ -145,6 +146,8 @@ export default function GeneralUsersSection({ users, setUsers }: {
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   // Create stepper
   const [step, setStep] = useState(0);
@@ -164,6 +167,10 @@ export default function GeneralUsersSection({ users, setUsers }: {
     const q = search.toLowerCase();
     return u.childName.toLowerCase().includes(q) || u.guardianContact.includes(q) || (u.guardianEmail ?? '').toLowerCase().includes(q);
   });
+
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const activePage = Math.max(1, Math.min(currentPage, totalPages || 1));
+  const paginatedUsers = filtered.slice((activePage - 1) * pageSize, activePage * pageSize);
 
   // ─── List View ──────────────────────────────────────────────────────────────
 
@@ -213,7 +220,7 @@ export default function GeneralUsersSection({ users, setUsers }: {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>No users found</td></tr>
-                ) : filtered.map((u, i) => (
+                ) : paginatedUsers.map((u, i) => (
                   <tr key={u.id} style={{ background: i % 2 === 0 ? 'white' : '#fafbfc', borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '14px 16px', fontWeight: 600, color: '#1e293b' }}>{u.childName}</td>
                     <td style={{ padding: '14px 16px', color: '#475569' }}>{u.age} yrs</td>
@@ -231,14 +238,21 @@ export default function GeneralUsersSection({ users, setUsers }: {
                             style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#e2e8f0', color: '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif' }}>No</button>
                         </span>
                       ) : (
-                        <span style={{ display: 'inline-flex', gap: 6 }}>
+                        <span style={{ display: 'inline-flex', gap: 8 }}>
                           <button onClick={() => {
                             setEditUser(u);
                             setEditForm({ childName: u.childName, age: String(u.age), sessionTime: String(u.weeklySession), guardianMobile: u.guardianContact, guardianEmail: u.guardianEmail ?? '' });
                             setEditErrors({}); setView('edit');
-                          }} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#2AD5B4', color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif' }}>Edit</button>
+                          }}
+                            title="Edit User"
+                            style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 'none', background: '#e2e8f0', color: '#475569', cursor: 'pointer', transition: 'all 0.2s' }}>
+                            <Pencil size={16} />
+                          </button>
                           <button onClick={() => setDeleteId(u.id)}
-                            style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#fee2e2', color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif' }}>Delete</button>
+                            title="Delete User"
+                            style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', transition: 'all 0.2s' }}>
+                            <Trash2 size={16} />
+                          </button>
                         </span>
                       )}
                     </td>
@@ -247,8 +261,90 @@ export default function GeneralUsersSection({ users, setUsers }: {
               </tbody>
             </table>
           </div>
-          <div style={{ padding: '12px 16px', fontSize: 12, color: '#94a3b8', borderTop: '1px solid #f1f5f9' }}>
-            {filtered.length} of {generalUsers.length} user{generalUsers.length !== 1 ? 's' : ''}
+          <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', background: '#fafbfc' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 12, color: '#64748b' }}>
+                Showing {filtered.length === 0 ? 0 : (activePage - 1) * pageSize + 1} to {Math.min(activePage * pageSize, filtered.length)} of {filtered.length} user{filtered.length !== 1 ? 's' : ''}
+              </span>
+              <select
+                value={pageSize}
+                onChange={e => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  border: '1px solid #e2e8f0',
+                  fontSize: 11,
+                  color: '#475569',
+                  background: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value={5}>5 per page</option>
+                <option value={10}>10 per page</option>
+                <option value={20}>20 per page</option>
+              </select>
+            </div>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button
+                  disabled={activePage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: '1px solid #e2e8f0',
+                    background: activePage === 1 ? '#f1f5f9' : 'white',
+                    color: activePage === 1 ? '#94a3b8' : '#475569',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: activePage === 1 ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Prev
+                </button>
+                {Array.from({ length: totalPages }).map((_, idx) => {
+                  const p = idx + 1;
+                  const isCurrent = p === activePage;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                        border: isCurrent ? '1px solid #2AD5B4' : '1px solid #e2e8f0',
+                        background: isCurrent ? '#2AD5B4' : 'white',
+                        color: isCurrent ? 'white' : '#475569',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+                <button
+                  disabled={activePage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: '1px solid #e2e8f0',
+                    background: activePage === totalPages ? '#f1f5f9' : 'white',
+                    color: activePage === totalPages ? '#94a3b8' : '#475569',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: activePage === totalPages ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

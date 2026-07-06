@@ -2,12 +2,13 @@ import { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { type AdminUser, type School } from '@/mock/adminData';
 import Stepper from './Stepper';
+import { Pencil, Trash2 } from 'lucide-react';
 
 type View = 'list' | 'create' | 'edit';
 type UploadMode = 'individual' | 'bulk';
 
-const GRADES = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4'];
-const AGES = Array.from({ length: 14 }, (_, i) => i + 5);
+const GRADES = ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7'];
+const AGES = [9, 10, 11, 12, 13];
 const SESSION_OPTS = [15, 20, 25, 30];
 
 const INDIVIDUAL_STEPS = ['Select School & Grade', 'Student Info', 'Guardian Info', 'Review'];
@@ -69,13 +70,14 @@ const errTxt: React.CSSProperties = { color: '#ef4444', fontSize: 12, marginTop:
 function NavBtn({ onClick, children, primary, disabled }: { onClick: () => void; children: React.ReactNode; primary?: boolean; disabled?: boolean }) {
   return (
     <button onClick={onClick} disabled={disabled} style={{
-      border: primary ? 'none' : '2px solid #e2e8f0',
+      border: disabled ? 'none' : (primary ? 'none' : '2px solid #e2e8f0'),
       borderRadius: 10, padding: '10px 24px', fontSize: 13, fontWeight: 700,
       cursor: disabled ? 'not-allowed' : 'pointer',
       fontFamily: 'Andika, system-ui, sans-serif',
-      background: primary ? '#FFEA11' : 'transparent',
-      color: primary ? '#1a1a1a' : '#64748b',
-      opacity: disabled ? 0.5 : 1,
+      background: disabled ? '#e2e8f0' : (primary ? '#FFEA11' : 'transparent'),
+      color: disabled ? '#94a3b8' : (primary ? '#1a1a1a' : '#64748b'),
+      boxShadow: (primary && !disabled) ? '0 4px 12px rgba(255, 234, 17, 0.35)' : 'none',
+      opacity: disabled ? 0.6 : 1,
     }}>
       {children}
     </button>
@@ -121,9 +123,13 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
 
     const errors: string[] = [];
     if (!childName) errors.push('Name is missing');
-    if (!age || isNaN(Number(age)) || Number(age) < 5 || Number(age) > 18) errors.push('Age must be 5–18');
+    if (!age || isNaN(Number(age)) || Number(age) < 9 || Number(age) > 13) errors.push('Age must be 9–13');
     if (!guardianMobile || !isMobile(guardianMobile)) errors.push('Valid 10-digit mobile required');
-    if (!sessionTime || ![15, 20, 25, 30].includes(Number(sessionTime))) errors.push('Session must be 15, 20, 25 or 30');
+    
+    const sessNum = Number(sessionTime);
+    if (!sessionTime || isNaN(sessNum) || sessNum < 15 || sessNum > 30) {
+      errors.push('Session must be 15–30 min');
+    }
 
     return { rowNum: idx + 2, childName, age, guardianMobile, sessionTime, guardianEmail, errors };
   });
@@ -151,6 +157,8 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
   const [filterGrade, setFilterGrade] = useState<string>('all');
   const [filterSchoolId, setFilterSchoolId] = useState<string>('all');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   // Create stepper
   const [step, setStep] = useState(0);
@@ -181,6 +189,10 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
     const matchSchool = filterSchoolId === 'all' || u.schoolId === filterSchoolId;
     return matchSearch && matchGrade && matchSchool;
   });
+
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const activePage = Math.max(1, Math.min(currentPage, totalPages || 1));
+  const paginatedUsers = filtered.slice((activePage - 1) * pageSize, activePage * pageSize);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -278,7 +290,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>No school users found</td></tr>
-                ) : filtered.map((u, i) => {
+                ) : paginatedUsers.map((u, i) => {
                   const school = schools.find(s => s.id === u.schoolId);
                   const schoolName = school ? `${school.name} (${school.branch})` : '—';
                   return (
@@ -302,7 +314,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                               style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#e2e8f0', color: '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif' }}>No</button>
                           </span>
                         ) : (
-                          <span style={{ display: 'inline-flex', gap: 6 }}>
+                          <span style={{ display: 'inline-flex', gap: 8 }}>
                             <button onClick={() => {
                               setEditUser(u);
                               setEditForm({
@@ -315,9 +327,16 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                                 guardianEmail: u.guardianEmail ?? ''
                               });
                               setEditErrors({}); setView('edit');
-                            }} style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#2AD5B4', color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif' }}>Edit</button>
+                            }}
+                              title="Edit User"
+                              style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 'none', background: '#e2e8f0', color: '#475569', cursor: 'pointer', transition: 'all 0.2s' }}>
+                              <Pencil size={16} />
+                            </button>
                             <button onClick={() => setDeleteId(u.id)}
-                              style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#fee2e2', color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif' }}>Delete</button>
+                              title="Delete User"
+                              style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', transition: 'all 0.2s' }}>
+                              <Trash2 size={16} />
+                            </button>
                           </span>
                         )}
                       </td>
@@ -327,8 +346,90 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
               </tbody>
             </table>
           </div>
-          <div style={{ padding: '12px 16px', fontSize: 12, color: '#94a3b8', borderTop: '1px solid #f1f5f9' }}>
-            {filtered.length} of {schoolUsers.length} student{schoolUsers.length !== 1 ? 's' : ''}
+          <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', background: '#fafbfc' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 12, color: '#64748b' }}>
+                Showing {filtered.length === 0 ? 0 : (activePage - 1) * pageSize + 1} to {Math.min(activePage * pageSize, filtered.length)} of {filtered.length} student{filtered.length !== 1 ? 's' : ''}
+              </span>
+              <select
+                value={pageSize}
+                onChange={e => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  border: '1px solid #e2e8f0',
+                  fontSize: 11,
+                  color: '#475569',
+                  background: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value={5}>5 per page</option>
+                <option value={10}>10 per page</option>
+                <option value={20}>20 per page</option>
+              </select>
+            </div>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button
+                  disabled={activePage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: '1px solid #e2e8f0',
+                    background: activePage === 1 ? '#f1f5f9' : 'white',
+                    color: activePage === 1 ? '#94a3b8' : '#475569',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: activePage === 1 ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Prev
+                </button>
+                {Array.from({ length: totalPages }).map((_, idx) => {
+                  const p = idx + 1;
+                  const isCurrent = p === activePage;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                        border: isCurrent ? '1px solid #2AD5B4' : '1px solid #e2e8f0',
+                        background: isCurrent ? '#2AD5B4' : 'white',
+                        color: isCurrent ? 'white' : '#475569',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+                <button
+                  disabled={activePage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: '1px solid #e2e8f0',
+                    background: activePage === totalPages ? '#f1f5f9' : 'white',
+                    color: activePage === totalPages ? '#94a3b8' : '#475569',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: activePage === totalPages ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -546,10 +647,39 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
               {/* Preview table */}
               {bulkRows.length > 0 && (
                 <div>
+                  {/* Summary Cards */}
+                  <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
+                    <div style={{ flex: 1, padding: '12px 16px', borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Rows</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: '#1e293b', marginTop: 4 }}>{bulkRows.length}</div>
+                    </div>
+                    <div style={{ flex: 1, padding: '12px 16px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: 0.5 }}>Ready to Import</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: '#15803d', marginTop: 4 }}>{validBulkRows.length}</div>
+                    </div>
+                    <div style={{ flex: 1, padding: '12px 16px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#991b1b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Invalid Rows</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: '#b91c1c', marginTop: 4 }}>{bulkRows.length - validBulkRows.length}</div>
+                    </div>
+                  </div>
+
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                     <p style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', margin: 0 }}>
-                      Preview — {validBulkRows.length} valid / {bulkRows.length - validBulkRows.length} with errors
+                      Preview
                     </p>
+                    {(bulkRows.length - validBulkRows.length) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => fileRef.current?.click()}
+                        style={{
+                          background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 8,
+                          padding: '6px 12px', fontSize: 12, fontWeight: 700,
+                          color: '#dc2626', cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif'
+                        }}
+                      >
+                        🔄 Re-upload Excel File
+                      </button>
+                    )}
                   </div>
                   <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid #e2e8f0', maxHeight: 280, overflowY: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -571,7 +701,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                             <td style={{ padding: '8px 12px', color: '#64748b' }}>{row.guardianEmail || '—'}</td>
                             <td style={{ padding: '8px 12px' }}>
                               {row.errors.length === 0 ? (
-                                <span style={{ color: '#16a34a', fontSize: 11, fontWeight: 700 }}>Valid</span>
+                                <span style={{ color: '#16a34a', fontSize: 11, fontWeight: 700 }}>Ready</span>
                               ) : (
                                 <span style={{ color: '#dc2626', fontSize: 11, fontWeight: 700 }} title={row.errors.join('; ')}>
                                   {row.errors.length} error{row.errors.length !== 1 ? 's' : ''}
@@ -589,12 +719,17 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
           )}
 
           {/* Navigation */}
+          {uploadMode === 'bulk' && step === 1 && bulkRows.length > 0 && bulkRows.some(r => r.errors.length > 0) && (
+            <p style={{ color: '#ef4444', fontSize: 13, fontWeight: 700, margin: '0 0 12px', textAlign: 'right', width: '100%' }}>
+              ⚠️ Cannot import: Please resolve all spreadsheet errors and re-upload.
+            </p>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 32 }}>
             <NavBtn onClick={() => step === 0 ? setView('list') : setStep(s => s - 1)}>
               {step === 0 ? 'Cancel' : 'Back'}
             </NavBtn>
             {uploadMode === 'bulk' && step === 1 ? (
-              <NavBtn primary onClick={handleBulkImport} disabled={validBulkRows.length === 0}>
+              <NavBtn primary onClick={handleBulkImport} disabled={bulkRows.length === 0 || bulkRows.some(r => r.errors.length > 0)}>
                 Import {validBulkRows.length > 0 ? `${validBulkRows.length} Student${validBulkRows.length !== 1 ? 's' : ''}` : 'Students'}
               </NavBtn>
             ) : step < currentSteps.length - 1 ? (

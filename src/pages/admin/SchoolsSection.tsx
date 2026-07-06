@@ -2,26 +2,57 @@ import { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { type School, type AdminUser } from '@/mock/adminData';
 import Stepper from './Stepper';
+import { Eye, Pencil, Trash2 } from 'lucide-react';
 
-type Board = 'CBSE' | 'Stateboard';
+type Board = 'CBSE' | 'Stateboard' | 'ICSE' | 'IB';
 type View = 'list' | 'create' | 'edit' | 'view-tenant' | 'add-student' | 'bulk-upload';
 
 interface SchoolForm {
   name: string;
   branch: string;
   board: Board | '';
-  address: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  pincode: string;
   contactEmail: string;
   contactPhone: string;
   numberOfGrades: string;
+  gradeNames: string[];
 }
 
-const EMPTY_FORM: SchoolForm = { name: '', branch: '', board: '', address: '', contactEmail: '', contactPhone: '', numberOfGrades: '' };
-const CREATE_STEPS = ['Tenant Details', 'Review'];
+const EMPTY_FORM: SchoolForm = {
+  name: '',
+  branch: '',
+  board: '',
+  addressLine1: '',
+  addressLine2: '',
+  city: '',
+  state: '',
+  pincode: '',
+  contactEmail: '',
+  contactPhone: '',
+  numberOfGrades: '',
+  gradeNames: [],
+};
+const CREATE_STEPS = ['Tenant Details', 'Grades Setup', 'Review'];
 
-const GRADES = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'];
-const AGES = Array.from({ length: 14 }, (_, i) => i + 5);
+const GRADES = ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7'];
+const AGES = [9, 10, 11, 12, 13];
 const SESSION_OPTS = [15, 20, 25, 30];
+
+const getTenantGrades = (tenant: School | null): string[] => {
+  if (!tenant) return [];
+  if (tenant.gradeNames && tenant.gradeNames.length > 0) {
+    return tenant.gradeNames;
+  }
+  const count = tenant.numberOfGrades || 0;
+  if (count > 0) {
+    return Array.from({ length: count }, (_, i) => `Grade ${i + 3}`);
+  }
+  return GRADES;
+};
 
 function genId(prefix: 's' | 'u') {
   return prefix + Math.random().toString(36).slice(2, 9);
@@ -58,7 +89,14 @@ function validateForm(f: SchoolForm): ErrMap {
   if (!f.name.trim()) e.name = 'Tenant name is required';
   if (!f.branch.trim()) e.branch = 'Branch is required';
   if (!f.board) e.board = 'Board is required';
-  if (!f.address.trim()) e.address = 'Address is required';
+  if (!f.addressLine1.trim()) e.addressLine1 = 'Address Line 1 is required';
+  if (!f.city.trim()) e.city = 'City is required';
+  if (!f.state.trim()) e.state = 'State is required';
+  if (!f.pincode.trim()) {
+    e.pincode = 'Pincode is required';
+  } else if (!/^\d{6}$/.test(f.pincode.trim())) {
+    e.pincode = 'Pincode must be exactly 6 digits';
+  }
   if (f.contactEmail && !/^[^@]+@[^@]+\.[^@]+$/.test(f.contactEmail.trim())) e.contactEmail = 'Enter a valid email address';
   if (f.contactPhone && !/^\d{10}$/.test(f.contactPhone.trim())) e.contactPhone = 'Enter a valid 10-digit phone number';
   if (f.numberOfGrades && (isNaN(Number(f.numberOfGrades)) || Number(f.numberOfGrades) < 1 || Number(f.numberOfGrades) > 12)) e.numberOfGrades = 'Number of grades must be between 1 and 12';
@@ -80,16 +118,16 @@ function BoardBadge({ board }: { board: Board }) {
 function NavBtn({ onClick, children, primary, disabled }: { onClick: () => void; children: React.ReactNode; primary?: boolean; disabled?: boolean }) {
   return (
     <button onClick={onClick} disabled={disabled} style={{
-      border: primary ? 'none' : '2px solid #e2e8f0',
+      border: disabled ? 'none' : (primary ? 'none' : '2px solid #e2e8f0'),
       borderRadius: 12,
       padding: '10px 24px',
       fontSize: 13,
       fontWeight: 700,
       cursor: disabled ? 'not-allowed' : 'pointer',
       fontFamily: 'Andika, system-ui, sans-serif',
-      background: primary ? '#FFEA11' : 'transparent',
-      color: primary ? '#1a1a1a' : '#64748b',
-      boxShadow: primary ? '0 4px 12px rgba(255, 234, 17, 0.35)' : 'none',
+      background: disabled ? '#e2e8f0' : (primary ? '#FFEA11' : 'transparent'),
+      color: disabled ? '#94a3b8' : (primary ? '#1a1a1a' : '#64748b'),
+      boxShadow: (primary && !disabled) ? '0 4px 12px rgba(255, 234, 17, 0.35)' : 'none',
       opacity: disabled ? 0.6 : 1,
       transition: 'all 0.2s',
     }}>
@@ -120,11 +158,43 @@ function downloadTemplate() {
 }
 
 // ─── Tenant Form Fields ──────────────────────────────────────────────────────
-function SchoolFormFields({ form, errors, onChange }: {
+// ─── Tenant Form Fields ──────────────────────────────────────────────────────
+function SchoolFormFields({ form, errors, onChange, hideGrades, showGradesOnly }: {
   form: SchoolForm;
   errors: ErrMap;
-  onChange: (key: keyof SchoolForm, val: string) => void;
+  onChange: (key: keyof SchoolForm, val: any) => void;
+  hideGrades?: boolean;
+  showGradesOnly?: boolean;
 }) {
+  if (showGradesOnly) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div>
+          <label style={lbl}>Number of Grades</label>
+          <input type="number" min={1} max={12} value={form.numberOfGrades} placeholder="e.g. 5"
+            onChange={e => {
+              const val = e.target.value;
+              onChange('numberOfGrades', val);
+              const num = Number(val);
+              if (!isNaN(num) && num > 0) {
+                const newNames = [...form.gradeNames];
+                if (newNames.length > num) {
+                  onChange('gradeNames', newNames.slice(0, num));
+                } else {
+                  while (newNames.length < num) {
+                    newNames.push(`Grade ${newNames.length + 3}`);
+                  }
+                  onChange('gradeNames', newNames);
+                }
+              }
+            }} style={iStyle(errors.numberOfGrades)} />
+          {errors.numberOfGrades && <p style={errTxt}>{errors.numberOfGrades}</p>}
+        </div>
+
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* Row 1: Name + Branch */}
@@ -142,7 +212,7 @@ function SchoolFormFields({ form, errors, onChange }: {
           {errors.branch && <p style={errTxt}>{errors.branch}</p>}
         </div>
       </div>
-      {/* Row 2: Board + Number of Grades */}
+      {/* Row 2: Board (+ Number of Grades if not hideGrades) */}
       <div style={{ display: 'flex', gap: 14 }}>
         <div style={{ flex: 1 }}>
           <label style={lbl}>Board <span style={{ color: '#ef4444' }}>*</span></label>
@@ -151,24 +221,74 @@ function SchoolFormFields({ form, errors, onChange }: {
             <option value="">Select board...</option>
             <option value="CBSE">CBSE</option>
             <option value="Stateboard">Stateboard</option>
+            <option value="ICSE">ICSE</option>
+            <option value="IB">IB</option>
           </select>
           {errors.board && <p style={errTxt}>{errors.board}</p>}
         </div>
+        {!hideGrades && (
+          <div style={{ flex: 1 }}>
+            <label style={lbl}>Number of Grades</label>
+            <input type="number" min={1} max={12} value={form.numberOfGrades} placeholder="e.g. 5"
+              onChange={e => {
+                const val = e.target.value;
+                onChange('numberOfGrades', val);
+                const num = Number(val);
+                if (!isNaN(num) && num > 0) {
+                  const newNames = [...form.gradeNames];
+                  if (newNames.length > num) {
+                    onChange('gradeNames', newNames.slice(0, num));
+                  } else {
+                    while (newNames.length < num) {
+                      newNames.push(`Grade ${newNames.length + 3}`);
+                    }
+                    onChange('gradeNames', newNames);
+                  }
+                }
+              }} style={iStyle(errors.numberOfGrades)} />
+            {errors.numberOfGrades && <p style={errTxt}>{errors.numberOfGrades}</p>}
+          </div>
+        )}
+      </div>
+
+      {/* Row 3: Address Line 1 + Address Line 2 */}
+      <div style={{ display: 'flex', gap: 14 }}>
         <div style={{ flex: 1 }}>
-          <label style={lbl}>Number of Grades</label>
-          <input type="number" min={1} max={12} value={form.numberOfGrades} placeholder="e.g. 6"
-            onChange={e => onChange('numberOfGrades', e.target.value)} style={iStyle(errors.numberOfGrades)} />
-          {errors.numberOfGrades && <p style={errTxt}>{errors.numberOfGrades}</p>}
+          <label style={lbl}>Address Line 1 <span style={{ color: '#ef4444' }}>*</span></label>
+          <input type="text" value={form.addressLine1} placeholder="Street, building name"
+            onChange={e => onChange('addressLine1', e.target.value)} style={iStyle(errors.addressLine1)} />
+          {errors.addressLine1 && <p style={errTxt}>{errors.addressLine1}</p>}
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={lbl}>Address Line 2</label>
+          <input type="text" value={form.addressLine2} placeholder="Apartment, suite, unit (optional)"
+            onChange={e => onChange('addressLine2', e.target.value)} style={iStyle()} />
         </div>
       </div>
-      {/* Row 3: Address */}
-      <div>
-        <label style={lbl}>Address <span style={{ color: '#ef4444' }}>*</span></label>
-        <textarea value={form.address} placeholder="Full address" rows={2}
-          onChange={e => onChange('address', e.target.value)}
-          style={{ ...iStyle(errors.address), resize: 'none' }} />
-        {errors.address && <p style={errTxt}>{errors.address}</p>}
+
+      {/* Row 3b: City + State + Pincode */}
+      <div style={{ display: 'flex', gap: 14 }}>
+        <div style={{ flex: 1 }}>
+          <label style={lbl}>City <span style={{ color: '#ef4444' }}>*</span></label>
+          <input type="text" value={form.city} placeholder="e.g. Chennai"
+            onChange={e => onChange('city', e.target.value)} style={iStyle(errors.city)} />
+          {errors.city && <p style={errTxt}>{errors.city}</p>}
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={lbl}>State <span style={{ color: '#ef4444' }}>*</span></label>
+          <input type="text" value={form.state} placeholder="e.g. Tamil Nadu"
+            onChange={e => onChange('state', e.target.value)} style={iStyle(errors.state)} />
+          {errors.state && <p style={errTxt}>{errors.state}</p>}
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={lbl}>Pincode <span style={{ color: '#ef4444' }}>*</span></label>
+          <input type="text" value={form.pincode} placeholder="e.g. 600040" maxLength={6}
+            onChange={e => onChange('pincode', e.target.value.replace(/\D/g, ''))} style={iStyle(errors.pincode)} />
+          {errors.pincode && <p style={errTxt}>{errors.pincode}</p>}
+        </div>
       </div>
+
+
       {/* Row 4: Contact Email + Contact Phone */}
       <div style={{ display: 'flex', gap: 14 }}>
         <div style={{ flex: 1 }}>
@@ -203,6 +323,8 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
   const [search, setSearch] = useState('');
   const [filterBoard, setFilterBoard] = useState<Board | 'all'>('all');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   // Create/Edit states
   const [step, setStep] = useState(0);
@@ -213,7 +335,6 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
 
   // View Tenant state
   const [activeGradeTab, setActiveGradeTab] = useState<string>('All');
-  const [studentDeleteId, setStudentDeleteId] = useState<string | null>(null);
 
   // Add student Form states
   const [studentGrade, setStudentGrade] = useState<string>('');
@@ -234,12 +355,12 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
   const [bulkError, setBulkError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const changeForm = (key: keyof SchoolForm, val: string) => {
+  const changeForm = (key: keyof SchoolForm, val: any) => {
     setForm(f => ({ ...f, [key]: val }));
     setErrors(e => ({ ...e, [key]: '' }));
   };
 
-  const changeEditForm = (key: keyof SchoolForm, val: string) => {
+  const changeEditForm = (key: keyof SchoolForm, val: any) => {
     setEditForm(f => ({ ...f, [key]: val }));
     setEditErrors(e => ({ ...e, [key]: '' }));
   };
@@ -249,6 +370,10 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
     return (s.name.toLowerCase().includes(q) || s.branch.toLowerCase().includes(q) || s.address.toLowerCase().includes(q))
       && (filterBoard === 'all' || s.board === filterBoard);
   });
+
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const activePage = Math.max(1, Math.min(currentPage, totalPages || 1));
+  const paginatedSchools = filtered.slice((activePage - 1) * pageSize, activePage * pageSize);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -341,7 +466,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #f1f5f9' }}>
-                  {['Tenant Name', 'Branch', 'Board', 'User Count', 'Address', 'Actions'].map(h => (
+                  {['Tenant Name', 'Branch', 'Board', 'Number of Grades', 'Address', 'Actions'].map(h => (
                     <th key={h} style={{ textAlign: h === 'Actions' ? 'center' : 'left', padding: '14px 16px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -349,8 +474,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
               <tbody>
                 {filtered.length === 0 ? (
                   <tr><td colSpan={6} style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>No tenants found</td></tr>
-                ) : filtered.map((s, i) => {
-                  const studentCount = users.filter(u => u.usageMode === 'school' && u.schoolId === s.id).length;
+                ) : paginatedSchools.map((s, i) => {
                   return (
                     <tr key={s.id} style={{ background: i % 2 === 0 ? 'white' : '#fafbfc', borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '14px 16px', fontWeight: 600, color: '#1e293b' }}>{s.name}</td>
@@ -362,10 +486,10 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                           borderRadius: '12px',
                           fontSize: '12px',
                           fontWeight: 700,
-                          backgroundColor: studentCount > 0 ? 'rgba(255, 234, 17, 0.15)' : '#f1f5f9',
-                          color: studentCount > 0 ? '#B8A800' : '#64748b'
+                          backgroundColor: 'rgba(42, 213, 180, 0.15)',
+                          color: '#20a78c'
                         }}>
-                          {studentCount} user{studentCount !== 1 ? 's' : ''}
+                          {s.numberOfGrades || 0} Grade{(s.numberOfGrades || 0) !== 1 ? 's' : ''}
                         </span>
                       </td>
                       <td style={{ padding: '14px 16px', color: '#64748b', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.address}</td>
@@ -379,13 +503,40 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                               style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#e2e8f0', color: '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif' }}>No</button>
                           </span>
                         ) : (
-                          <span style={{ display: 'inline-flex', gap: 6 }}>
+                          <span style={{ display: 'inline-flex', gap: 8 }}>
                             <button onClick={() => { setSelectedTenant(s); setActiveGradeTab('All'); setView('view-tenant'); }}
-                              style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#e0f2fe', color: '#0369a1', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif' }}>View</button>
-                            <button onClick={() => { setEditSchool(s); setEditForm({ name: s.name, branch: s.branch, board: s.board, address: s.address, contactEmail: s.contactEmail ?? '', contactPhone: s.contactPhone ?? '', numberOfGrades: s.numberOfGrades != null ? String(s.numberOfGrades) : '' }); setEditErrors({}); setView('edit'); }}
-                              style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#e2e8f0', color: '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif' }}>Edit</button>
+                              title="View Details"
+                              style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 'none', background: '#e0f2fe', color: '#0369a1', cursor: 'pointer', transition: 'all 0.2s' }}>
+                              <Eye size={16} />
+                            </button>
+                            <button onClick={() => {
+                              setEditSchool(s);
+                              setEditForm({
+                                name: s.name,
+                                branch: s.branch,
+                                board: s.board,
+                                addressLine1: s.addressLine1 || s.address.split(',')[0] || '',
+                                addressLine2: s.addressLine2 || '',
+                                city: s.city || 'Chennai',
+                                state: s.state || 'Tamil Nadu',
+                                pincode: s.pincode || '600040',
+                                contactEmail: s.contactEmail ?? '',
+                                contactPhone: s.contactPhone ?? '',
+                                numberOfGrades: s.numberOfGrades != null ? String(s.numberOfGrades) : '',
+                                gradeNames: s.gradeNames || Array.from({ length: s.numberOfGrades || 0 }, (_, idx) => `Grade ${idx + 3}`),
+                              });
+                              setEditErrors({});
+                              setView('edit');
+                            }}
+                              title="Edit Tenant"
+                              style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 'none', background: '#e2e8f0', color: '#475569', cursor: 'pointer', transition: 'all 0.2s' }}>
+                              <Pencil size={16} />
+                            </button>
                             <button onClick={() => setDeleteId(s.id)}
-                              style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#fee2e2', color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif' }}>Delete</button>
+                              title="Delete Tenant"
+                              style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', transition: 'all 0.2s' }}>
+                              <Trash2 size={16} />
+                            </button>
                           </span>
                         )}
                       </td>
@@ -395,8 +546,90 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
               </tbody>
             </table>
           </div>
-          <div style={{ padding: '12px 16px', fontSize: 12, color: '#94a3b8', borderTop: '1px solid #f1f5f9' }}>
-            {filtered.length} of {schools.length} tenant{schools.length !== 1 ? 's' : ''}
+          <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #f1f5f9', background: '#fafbfc' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 12, color: '#64748b' }}>
+                Showing {filtered.length === 0 ? 0 : (activePage - 1) * pageSize + 1} to {Math.min(activePage * pageSize, filtered.length)} of {filtered.length} school{filtered.length !== 1 ? 's' : ''}
+              </span>
+              <select
+                value={pageSize}
+                onChange={e => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  border: '1px solid #e2e8f0',
+                  fontSize: 11,
+                  color: '#475569',
+                  background: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value={5}>5 per page</option>
+                <option value={10}>10 per page</option>
+                <option value={20}>20 per page</option>
+              </select>
+            </div>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button
+                  disabled={activePage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: '1px solid #e2e8f0',
+                    background: activePage === 1 ? '#f1f5f9' : 'white',
+                    color: activePage === 1 ? '#94a3b8' : '#475569',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: activePage === 1 ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Prev
+                </button>
+                {Array.from({ length: totalPages }).map((_, idx) => {
+                  const p = idx + 1;
+                  const isCurrent = p === activePage;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                        border: isCurrent ? '1px solid #2AD5B4' : '1px solid #e2e8f0',
+                        background: isCurrent ? '#2AD5B4' : 'white',
+                        color: isCurrent ? 'white' : '#475569',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+                <button
+                  disabled={activePage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: '1px solid #e2e8f0',
+                    background: activePage === totalPages ? '#f1f5f9' : 'white',
+                    color: activePage === totalPages ? '#94a3b8' : '#475569',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: activePage === totalPages ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -406,21 +639,44 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
   // ─── 2. Create Tenant View (Stepper) ──────────────────────────────────────────
   if (view === 'create') {
     const handleNext = () => {
-      const e = validateForm(form);
+      let e: ErrMap = {};
+      if (step === 0) {
+        // Validate Tenant Details (exclude numberOfGrades)
+        const allErrors = validateForm(form);
+        const { numberOfGrades, ...step0Errors } = allErrors;
+        e = step0Errors;
+      } else if (step === 1) {
+        // Validate Grades Setup
+        if (!form.numberOfGrades) {
+          e.numberOfGrades = 'Number of grades is required';
+        } else {
+          const num = Number(form.numberOfGrades);
+          if (isNaN(num) || num < 1 || num > 12) {
+            e.numberOfGrades = 'Number of grades must be between 1 and 12';
+          }
+        }
+      }
       setErrors(e);
       if (Object.keys(e).length === 0) setStep(s => s + 1);
     };
 
     const handleSubmit = () => {
+      const addressString = `${form.addressLine1}${form.addressLine2 ? ', ' + form.addressLine2 : ''}, ${form.city}, ${form.state} - ${form.pincode}`;
       const newTenant = {
         id: genId('s'),
         name: form.name,
         branch: form.branch,
         board: form.board as Board,
-        address: form.address,
+        address: addressString,
+        addressLine1: form.addressLine1,
+        addressLine2: form.addressLine2,
+        city: form.city,
+        state: form.state,
+        pincode: form.pincode,
         contactEmail: form.contactEmail || undefined,
         contactPhone: form.contactPhone || undefined,
         numberOfGrades: form.numberOfGrades ? Number(form.numberOfGrades) : undefined,
+        gradeNames: form.gradeNames.map((name, i) => name || `Grade ${i + 3}`),
       };
       setSchools(p => [...p, newTenant]);
       setSelectedTenant(newTenant);
@@ -439,10 +695,14 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
           <Stepper steps={CREATE_STEPS} current={step} />
 
           {step === 0 && (
-            <SchoolFormFields form={form} errors={errors} onChange={changeForm} />
+            <SchoolFormFields form={form} errors={errors} onChange={changeForm} hideGrades={true} />
           )}
 
           {step === 1 && (
+            <SchoolFormFields form={form} errors={errors} onChange={changeForm} showGradesOnly={true} />
+          )}
+
+          {step === 2 && (
             <div>
               <p style={{ fontSize: 13, color: '#64748b', marginTop: 0, marginBottom: 20 }}>
                 Review the details before adding the school tenant.
@@ -451,10 +711,17 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                 <FieldRow label="Tenant Name" value={form.name} />
                 <FieldRow label="Branch" value={form.branch} />
                 <FieldRow label="Board" value={form.board} />
-                <FieldRow label="Address" value={form.address} />
+                <FieldRow label="Address Line 1" value={form.addressLine1} />
+                {form.addressLine2 && <FieldRow label="Address Line 2" value={form.addressLine2} />}
+                <FieldRow label="City" value={form.city} />
+                <FieldRow label="State" value={form.state} />
+                <FieldRow label="Pincode" value={form.pincode} />
                 {form.contactEmail && <FieldRow label="Contact Email" value={form.contactEmail} />}
                 {form.contactPhone && <FieldRow label="Contact Phone" value={form.contactPhone} />}
                 {form.numberOfGrades && <FieldRow label="Number of Grades" value={form.numberOfGrades} />}
+                {form.gradeNames && form.gradeNames.length > 0 && (
+                  <FieldRow label="Grade Names" value={form.gradeNames.filter(Boolean).join(', ')} />
+                )}
               </div>
             </div>
           )}
@@ -479,15 +746,22 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
       const e = validateForm(editForm);
       setEditErrors(e);
       if (Object.keys(e).length > 0) return;
+      const addressString = `${editForm.addressLine1}${editForm.addressLine2 ? ', ' + editForm.addressLine2 : ''}, ${editForm.city}, ${editForm.state} - ${editForm.pincode}`;
       setSchools(p => p.map(s => s.id === editSchool!.id ? {
         ...s,
         name: editForm.name,
         branch: editForm.branch,
         board: editForm.board as Board,
-        address: editForm.address,
+        address: addressString,
+        addressLine1: editForm.addressLine1,
+        addressLine2: editForm.addressLine2,
+        city: editForm.city,
+        state: editForm.state,
+        pincode: editForm.pincode,
         contactEmail: editForm.contactEmail || undefined,
         contactPhone: editForm.contactPhone || undefined,
         numberOfGrades: editForm.numberOfGrades ? Number(editForm.numberOfGrades) : undefined,
+        gradeNames: editForm.gradeNames.map((name, i) => name || `Grade ${i + 3}`),
       } : s));
       setView('list');
     };
@@ -536,48 +810,11 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
               📍 {selectedTenant.branch} Branch | {selectedTenant.address}
             </p>
           </div>
-
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              onClick={() => {
-                setStudentGrade('');
-                setStudentForm({ childName: '', age: '9', guardianContact: '', guardianEmail: '', weeklySession: '20' });
-                setStudentErrors({});
-                setView('add-student');
-              }}
-              style={{
-                background: '#FFEA11', border: 'none', borderRadius: 12,
-                padding: '10px 18px', fontSize: 13, fontWeight: 700,
-                color: '#1a1a1a', cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif',
-                transition: 'all 0.2s',
-              }}
-            >
-              ➕ Enter User Details
-            </button>
-            <button
-              onClick={() => {
-                setBulkGrade('');
-                setBulkSession('20');
-                setFileName('');
-                setBulkRows([]);
-                setBulkError('');
-                setView('bulk-upload');
-              }}
-              style={{
-                background: '#e0f2fe', border: 'none', borderRadius: 12,
-                padding: '10px 18px', fontSize: 13, fontWeight: 700,
-                color: '#0369a1', cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif',
-                transition: 'all 0.2s',
-              }}
-            >
-              📥 Bulk Upload Users
-            </button>
-          </div>
         </div>
 
         {/* Grades Tabs */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 20, overflowX: 'auto', paddingBottom: 8 }}>
-          {['All', ...GRADES].map(g => {
+          {['All', ...getTenantGrades(selectedTenant)].map(g => {
             const count = g === 'All'
               ? tenantUsers.length
               : tenantUsers.filter(u => u.grade === g).length;
@@ -612,16 +849,16 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #f1f5f9' }}>
-                  {['Student Name', 'Grade', 'Age', 'Session duration', 'Guardian Email', 'Guardian Contact', 'Actions'].map(h => (
-                    <th key={h} style={{ textAlign: h === 'Actions' ? 'center' : 'left', padding: '14px 16px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
+                  {['Student Name', 'Grade', 'Age', 'Session duration', 'Guardian Email', 'Guardian Contact'].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {activeGradeUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>
-                      No users found in this grade category. Click "Enter User Details" to add students!
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>
+                      No users found in this grade category.
                     </td>
                   </tr>
                 ) : activeGradeUsers.map((u, i) => (
@@ -636,20 +873,6 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                     <td style={{ padding: '14px 16px', color: '#475569' }}>{u.weeklySession} mins</td>
                     <td style={{ padding: '14px 16px', color: '#64748b' }}>{u.guardianEmail || '—'}</td>
                     <td style={{ padding: '14px 16px', color: '#475569' }}>{u.guardianContact}</td>
-                    <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                      {studentDeleteId === u.id ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 600 }}>Delete?</span>
-                          <button onClick={() => { setUsers(prev => prev.filter(x => x.id !== u.id)); setStudentDeleteId(null); }}
-                            style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#ef4444', color: 'white', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif' }}>Yes</button>
-                          <button onClick={() => setStudentDeleteId(null)}
-                            style={{ padding: '4px 10px', borderRadius: 6, border: 'none', background: '#e2e8f0', color: '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif' }}>No</button>
-                        </span>
-                      ) : (
-                        <button onClick={() => setStudentDeleteId(u.id)}
-                          style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#fee2e2', color: '#dc2626', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif' }}>Delete</button>
-                      )}
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -708,7 +931,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
           <div>
             <label style={lbl}>1. Select Grade <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-              {GRADES.map(g => {
+              {getTenantGrades(selectedTenant).map(g => {
                 const active = studentGrade === g;
                 return (
                   <button
@@ -844,12 +1067,11 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
 
       // Map grade to default age
       let defaultAge = 10;
-      if (bulkGrade === 'Grade 1') defaultAge = 6;
-      else if (bulkGrade === 'Grade 2') defaultAge = 7;
-      else if (bulkGrade === 'Grade 3') defaultAge = 8;
-      else if (bulkGrade === 'Grade 4') defaultAge = 9;
-      else if (bulkGrade === 'Grade 5') defaultAge = 10;
-      else if (bulkGrade === 'Grade 6') defaultAge = 11;
+      if (bulkGrade === 'Grade 3') defaultAge = 9;
+      else if (bulkGrade === 'Grade 4') defaultAge = 10;
+      else if (bulkGrade === 'Grade 5') defaultAge = 11;
+      else if (bulkGrade === 'Grade 6') defaultAge = 12;
+      else if (bulkGrade === 'Grade 7') defaultAge = 13;
 
       // Generate users
       const newUsers: AdminUser[] = validRows.map((r, index) => ({
@@ -887,7 +1109,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
           <div>
             <label style={lbl}>1. Select Target Grade <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-              {GRADES.map(g => {
+              {getTenantGrades(selectedTenant).map(g => {
                 const active = bulkGrade === g;
                 return (
                   <button
@@ -973,9 +1195,40 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
               {/* Preview parsed spreadsheet rows */}
               {bulkRows.length > 0 && (
                 <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 20 }}>
-                  <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
-                    Spreadsheet Preview ({validRowsCount} valid / {bulkRows.length} total)
-                  </h3>
+                  {/* Summary Cards */}
+                  <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
+                    <div style={{ flex: 1, padding: '12px 16px', borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Rows</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: '#1e293b', marginTop: 4 }}>{bulkRows.length}</div>
+                    </div>
+                    <div style={{ flex: 1, padding: '12px 16px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: 0.5 }}>Ready to Import</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: '#15803d', marginTop: 4 }}>{validRowsCount}</div>
+                    </div>
+                    <div style={{ flex: 1, padding: '12px 16px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#991b1b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Invalid Rows</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: '#b91c1c', marginTop: 4 }}>{bulkRows.length - validRowsCount}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1e293b' }}>
+                      Spreadsheet Preview
+                    </h3>
+                    {validRowsCount < bulkRows.length && (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{
+                          background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 8,
+                          padding: '6px 12px', fontSize: 12, fontWeight: 700,
+                          color: '#dc2626', cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif'
+                        }}
+                      >
+                        🔄 Re-upload Excel File
+                      </button>
+                    )}
+                  </div>
                   <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 10 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                       <thead>
@@ -996,7 +1249,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                               {r.errors.length > 0 ? (
                                 <span style={{ color: '#ef4444', fontWeight: 700 }}>⚠️ {r.errors.join(', ')}</span>
                               ) : (
-                                <span style={{ color: '#10b981', fontWeight: 700 }}>✅ Ready</span>
+                                <span style={{ color: '#10b981', fontWeight: 700 }}>Ready</span>
                               )}
                             </td>
                           </tr>
@@ -1007,11 +1260,16 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                 </div>
               )}
 
+              {bulkRows.length > 0 && bulkRows.some(r => r.errors.length > 0) && (
+                <p style={{ color: '#ef4444', fontSize: 13, fontWeight: 700, margin: '8px 0', textAlign: 'right' }}>
+                  ⚠️ Cannot import: Please resolve all spreadsheet errors and re-upload.
+                </p>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
                 <NavBtn onClick={() => setView('view-tenant')}>Cancel</NavBtn>
                 <NavBtn
                   primary
-                  disabled={validRowsCount === 0}
+                  disabled={bulkRows.length === 0 || bulkRows.some(r => r.errors.length > 0)}
                   onClick={handleBulkUpload}
                 >
                   Upload & Import {validRowsCount} Students
