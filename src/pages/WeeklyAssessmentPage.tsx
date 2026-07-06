@@ -880,7 +880,6 @@ export default function WeeklyAssessmentPage() {
   );
 
   const isIdeasChallenge = !isMCQOrTwistChallenge(currentChallenge);
-  const isLastChallenge = currentChallengeIndex === WEEKLY_ASSESSMENT.length - 1;
 
   // Determine what lock button label to show
   const showLockButton = !showTwist;

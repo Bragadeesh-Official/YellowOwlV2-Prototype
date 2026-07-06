@@ -167,6 +167,7 @@ function SchoolFormFields({ form, errors, onChange, hideGrades, showGradesOnly }
   showGradesOnly?: boolean;
 }) {
   if (showGradesOnly) {
+    const num = Number(form.numberOfGrades) || 0;
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div>
@@ -191,9 +192,37 @@ function SchoolFormFields({ form, errors, onChange, hideGrades, showGradesOnly }
           {errors.numberOfGrades && <p style={errTxt}>{errors.numberOfGrades}</p>}
         </div>
 
+        {num > 0 && num <= 12 && (
+          <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 18 }}>
+            <label style={{ ...lbl, marginBottom: 12 }}>Grade Names (Prefilled - Customise if needed)</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+              {Array.from({ length: num }).map((_, idx) => {
+                const currentName = form.gradeNames[idx] || `Grade ${idx + 3}`;
+                return (
+                  <div key={idx}>
+                    <label style={{ ...lbl, fontSize: 12, fontWeight: 500, color: '#64748b' }}>Grade {idx + 1} Name</label>
+                    <input
+                      type="text"
+                      value={currentName}
+                      placeholder={`Grade ${idx + 3}`}
+                      onChange={e => {
+                        const newNames = [...form.gradeNames];
+                        newNames[idx] = e.target.value;
+                        onChange('gradeNames', newNames);
+                      }}
+                      style={iStyle()}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
+
+  const num = Number(form.numberOfGrades) || 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -250,6 +279,33 @@ function SchoolFormFields({ form, errors, onChange, hideGrades, showGradesOnly }
           </div>
         )}
       </div>
+
+      {!hideGrades && num > 0 && num <= 12 && (
+        <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 18 }}>
+          <label style={{ ...lbl, marginBottom: 12 }}>Grade Names (Prefilled - Customise if needed)</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+            {Array.from({ length: num }).map((_, idx) => {
+              const currentName = form.gradeNames[idx] || `Grade ${idx + 3}`;
+              return (
+                <div key={idx}>
+                  <label style={{ ...lbl, fontSize: 12, fontWeight: 500, color: '#64748b' }}>Grade {idx + 1} Name</label>
+                  <input
+                    type="text"
+                    value={currentName}
+                    placeholder={`Grade ${idx + 3}`}
+                    onChange={e => {
+                      const newNames = [...form.gradeNames];
+                      newNames[idx] = e.target.value;
+                      onChange('gradeNames', newNames);
+                    }}
+                    style={iStyle()}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Row 3: Address Line 1 + Address Line 2 */}
       <div style={{ display: 'flex', gap: 14 }}>
@@ -330,6 +386,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<SchoolForm>(EMPTY_FORM);
   const [errors, setErrors] = useState<ErrMap>({});
+  const [editStep, setEditStep] = useState(0);
   const [editForm, setEditForm] = useState<SchoolForm>(EMPTY_FORM);
   const [editErrors, setEditErrors] = useState<ErrMap>({});
 
@@ -526,6 +583,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                                 gradeNames: s.gradeNames || Array.from({ length: s.numberOfGrades || 0 }, (_, idx) => `Grade ${idx + 3}`),
                               });
                               setEditErrors({});
+                              setEditStep(0);
                               setView('edit');
                             }}
                               title="Edit Tenant"
@@ -742,10 +800,29 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
 
   // ─── 3. Edit Tenant View ──────────────────────────────────────────────────────
   if (view === 'edit') {
-    const handleEditSave = () => {
-      const e = validateForm(editForm);
+    const handleEditNext = () => {
+      let e: ErrMap = {};
+      if (editStep === 0) {
+        // Validate Tenant Details (exclude numberOfGrades)
+        const allErrors = validateForm(editForm);
+        const { numberOfGrades, ...step0Errors } = allErrors;
+        e = step0Errors;
+      } else if (editStep === 1) {
+        // Validate Grades Setup
+        if (!editForm.numberOfGrades) {
+          e.numberOfGrades = 'Number of grades is required';
+        } else {
+          const num = Number(editForm.numberOfGrades);
+          if (isNaN(num) || num < 1 || num > 12) {
+            e.numberOfGrades = 'Number of grades must be between 1 and 12';
+          }
+        }
+      }
       setEditErrors(e);
-      if (Object.keys(e).length > 0) return;
+      if (Object.keys(e).length === 0) setEditStep(s => s + 1);
+    };
+
+    const handleEditSave = () => {
       const addressString = `${editForm.addressLine1}${editForm.addressLine2 ? ', ' + editForm.addressLine2 : ''}, ${editForm.city}, ${editForm.state} - ${editForm.pincode}`;
       setSchools(p => p.map(s => s.id === editSchool!.id ? {
         ...s,
@@ -775,10 +852,48 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1e293b', margin: '0 0 24px' }}>Edit Tenant</h1>
 
         <div style={{ background: 'white', borderRadius: 16, padding: '32px 36px', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', border: '1px solid #E2E8F0' }}>
-          <SchoolFormFields form={editForm} errors={editErrors} onChange={changeEditForm} />
+          <Stepper steps={CREATE_STEPS} current={editStep} />
+
+          {editStep === 0 && (
+            <SchoolFormFields form={editForm} errors={editErrors} onChange={changeEditForm} hideGrades={true} />
+          )}
+
+          {editStep === 1 && (
+            <SchoolFormFields form={editForm} errors={editErrors} onChange={changeEditForm} showGradesOnly={true} />
+          )}
+
+          {editStep === 2 && (
+            <div>
+              <p style={{ fontSize: 13, color: '#64748b', marginTop: 0, marginBottom: 20 }}>
+                Review the details before saving the school tenant changes.
+              </p>
+              <div style={{ background: '#f8fafc', borderRadius: 12, padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <FieldRow label="Tenant Name" value={editForm.name} />
+                <FieldRow label="Branch" value={editForm.branch} />
+                <FieldRow label="Board" value={editForm.board} />
+                <FieldRow label="Address Line 1" value={editForm.addressLine1} />
+                {editForm.addressLine2 && <FieldRow label="Address Line 2" value={editForm.addressLine2} />}
+                <FieldRow label="City" value={editForm.city} />
+                <FieldRow label="State" value={editForm.state} />
+                <FieldRow label="Pincode" value={editForm.pincode} />
+                {editForm.contactEmail && <FieldRow label="Contact Email" value={editForm.contactEmail} />}
+                {editForm.contactPhone && <FieldRow label="Contact Phone" value={editForm.contactPhone} />}
+                {editForm.numberOfGrades && <FieldRow label="Number of Grades" value={editForm.numberOfGrades} />}
+                {editForm.gradeNames && editForm.gradeNames.length > 0 && (
+                  <FieldRow label="Grade Names" value={editForm.gradeNames.filter(Boolean).join(', ')} />
+                )}
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 32 }}>
-            <NavBtn onClick={() => setView('list')}>Cancel</NavBtn>
-            <NavBtn primary onClick={handleEditSave}>Save Changes</NavBtn>
+            <NavBtn onClick={() => editStep === 0 ? setView('list') : setEditStep(s => s - 1)}>
+              {editStep === 0 ? 'Cancel' : 'Back'}
+            </NavBtn>
+            {editStep < CREATE_STEPS.length - 1
+              ? <NavBtn primary onClick={handleEditNext}>Next</NavBtn>
+              : <NavBtn primary onClick={handleEditSave}>Save Changes</NavBtn>
+            }
           </div>
         </div>
       </div>
