@@ -32,6 +32,7 @@ export interface AdminUser {
   usageMode: 'general' | 'school';
   grade?: string;
   schoolId?: string;
+  rollNo?: string;
 }
 
 export const MOCK_SCHOOLS: School[] = [
@@ -90,6 +91,7 @@ export const MOCK_ADMIN_USERS: AdminUser[] = [
     usageMode: 'school',
     grade: 'Grade 3',
     schoolId: 's1',
+    rollNo: 'ARJ101',
   },
   {
     id: 'u2',
@@ -99,6 +101,7 @@ export const MOCK_ADMIN_USERS: AdminUser[] = [
     guardianEmail: 'sharma@gmail.com',
     weeklySession: 30,
     usageMode: 'general',
+    rollNo: 'PRI202',
   },
   {
     id: 'u3',
@@ -110,5 +113,6 @@ export const MOCK_ADMIN_USERS: AdminUser[] = [
     usageMode: 'school',
     grade: 'Grade 4',
     schoolId: 's2',
+    rollNo: 'ADI303',
   },
 ];

@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import logo from '@/assets/yellowowllogo.png';
 import {
   WEEKLY_ASSESSMENT,
+  SKILL_DESCRIPTIONS,
 } from '@/mock/assessmentData';
 import type {
   Challenge,
@@ -127,6 +128,7 @@ export default function WeeklyAssessmentPage() {
 
   // ── State ──
   const [showChallengeIntro, setShowChallengeIntro] = useState(true);
+  const [showFeedbackPage, setShowFeedbackPage] = useState(false);
   const [currentChallengeIndex, setCurrentChallengeIndex] = useState(() => {
     const saved = assessmentProgress as any;
     if (saved && typeof saved.currentChallengeIndex === 'number' && !saved.completed) {
@@ -416,7 +418,7 @@ export default function WeeklyAssessmentPage() {
         }
       }, 50);
     } else {
-      goToNextChallenge();
+      setShowFeedbackPage(true);
     }
   };
 
@@ -502,6 +504,7 @@ export default function WeeklyAssessmentPage() {
       setIsComplete(false);
       setTimerPaused(true);
       setShowChallengeIntro(true);
+      setShowFeedbackPage(false);
     }
   };
 
@@ -532,6 +535,202 @@ export default function WeeklyAssessmentPage() {
           <button className="btn-primary w-full text-lg" onClick={() => navigate('/dashboard')}>
             Back to My Den ➔
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Feedback screen ──
+  if (showFeedbackPage) {
+    const mcqs = getMCQQuestions(currentChallenge);
+    const mcqAnswers = currentAnswer.mcq;
+    let mcqScore = 0;
+    mcqs.forEach((q, idx) => {
+      if (mcqAnswers[idx] === q.correct) {
+        mcqScore++;
+      }
+    });
+
+    const twistQuestion = currentChallenge.twistQuestion;
+    const twistAnswer = currentAnswer.twist;
+    let twistCorrect = false;
+    if (twistQuestion && twistAnswer !== null) {
+      twistCorrect = twistAnswer === twistQuestion.correct;
+    }
+
+    const totalMcqs = mcqs.length;
+    const hasMcqs = totalMcqs > 0;
+    const hasTwist = !!twistQuestion;
+    const hasDescriptive = !!getDescriptiveQuestion(currentChallenge);
+    const isIdeas = !hasMcqs && !hasDescriptive;
+    const isLastChallenge = currentChallengeIndex === WEEKLY_ASSESSMENT.length - 1;
+
+    // determine overall celebration emoji
+    const isAllCorrect = (!hasMcqs || mcqScore === totalMcqs) && (!hasTwist || twistCorrect);
+
+    return (
+      <div className="min-h-screen gradient-bg flex flex-col">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto w-full">
+          <div className="flex items-center gap-2">
+            <img src={logo} alt="Logo" style={{ height: 40, objectFit: 'contain' }} />
+            <h1 className="font-black text-gray-800 text-base">Challenge Feedback 📝</h1>
+          </div>
+          <div className={`font-bold text-sm ${timeLeft < 120 ? 'timer-critical' : 'text-gray-700'}`}>
+            ⏱️ {formatTime(timeLeft)}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 px-4 pb-8 max-w-2xl mx-auto w-full">
+          <div className="owl-card p-6 border-2 border-teal-300 shadow-xl bg-white" style={{ borderRadius: 24 }}>
+            {/* Header */}
+            <div className="text-center mb-6">
+              <span className="text-5xl inline-block transform animate-bounce">
+                {isIdeas ? '💡' : isAllCorrect ? '🌟' : '👍'}
+              </span>
+              <h2 className="text-2xl font-black text-gray-800 mt-3">
+                {isIdeas ? 'Great Brainstorming!' : isAllCorrect ? 'Superb Work! 🤩' : 'Good Try! Keep Growing!'}
+              </h2>
+              <p className="text-sm font-bold text-gray-500 mt-1">
+                Here's your challenge feedback for <span className="text-teal-600 font-black">{currentChallenge.title}</span>
+              </p>
+            </div>
+
+            {/* MCQ Results */}
+            {hasMcqs && (
+              <div className="space-y-4 mb-6">
+                <div className="bg-teal-50/80 border border-teal-100 rounded-2xl p-4 flex items-center justify-between">
+                  <span className="font-extrabold text-teal-800 text-sm">MCQ Questions:</span>
+                  <span className="bg-teal-600 text-white font-black text-xs px-3 py-1 rounded-full">
+                    {mcqScore} / {totalMcqs} Correct
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {mcqs.map((q, qi) => {
+                    const isCorrect = mcqAnswers[qi] === q.correct;
+                    return (
+                      <div key={qi} className="p-4 rounded-xl border border-gray-100 bg-gray-50/50">
+                        <p className="font-bold text-xs text-gray-400 uppercase tracking-wider mb-1">Question {qi + 1}</p>
+                        <p className="font-extrabold text-gray-800 text-sm mb-2">{q.question}</p>
+                        <div className="flex flex-col gap-1.5 text-xs">
+                          <p>
+                            <span className="font-bold text-gray-500">Your Answer: </span>
+                            <span className={isCorrect ? 'text-green-600 font-extrabold' : 'text-red-500 font-extrabold'}>
+                              {mcqAnswers[qi] !== null ? q.options[mcqAnswers[qi]!] : 'Not Answered'}
+                              {isCorrect ? ' (Correct! ✅)' : ' (Incorrect ❌)'}
+                            </span>
+                          </p>
+                          {!isCorrect && (
+                            <p>
+                              <span className="font-bold text-gray-500">Correct Answer: </span>
+                              <span className="text-green-600 font-extrabold">{q.options[q.correct]}</span>
+                            </p>
+                          )}
+                          <div className="mt-2 p-2.5 rounded-lg bg-teal-50/70 border border-teal-100/50 text-teal-800 leading-relaxed font-medium">
+                            <span className="font-extrabold">Explanation: </span>{q.explanation}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Descriptive Answer Results */}
+            {hasDescriptive && (
+              <div className="mb-6 space-y-3">
+                <div className="bg-amber-50/80 border border-amber-100 rounded-2xl p-4">
+                  <span className="font-extrabold text-amber-800 text-sm">📝 Your Creative Response:</span>
+                  <p className="mt-2 text-gray-700 text-sm bg-white p-3 rounded-xl border border-amber-100 italic font-medium font-sans">
+                    "{currentAnswer.descriptive || 'No response provided'}"
+                  </p>
+                </div>
+                {getDescriptiveQuestion(currentChallenge)?.sampleAnswer && (
+                  <div className="p-4 rounded-2xl bg-teal-50/50 border border-teal-100 text-xs">
+                    <span className="font-black text-teal-800 block mb-1">💡 Sample Answer / Reflection Idea:</span>
+                    <p className="text-teal-700 leading-relaxed font-medium">
+                      {getDescriptiveQuestion(currentChallenge)?.sampleAnswer}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Twist Answer Results */}
+            {hasTwist && twistQuestion && twistAnswer !== null && (
+              <div className="mb-6 space-y-3">
+                <div className="bg-purple-50/80 border border-purple-100 rounded-2xl p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-purple-800 text-sm">🌀 Surprise Twist Result:</span>
+                    <span className={`font-black text-xs px-2.5 py-1 rounded-full text-white ${twistCorrect ? 'bg-purple-600' : 'bg-gray-500'}`}>
+                      {twistCorrect ? 'Correct! 🎉' : 'Incorrect'}
+                    </span>
+                  </div>
+                  <p className="mt-3 font-extrabold text-gray-800 text-sm">{twistQuestion.question}</p>
+                  <p className="mt-1 text-xs">
+                    <span className="font-bold text-gray-500">Your Answer: </span>
+                    <span className={twistCorrect ? 'text-green-600 font-extrabold' : 'text-red-500 font-extrabold'}>
+                      {twistQuestion.options[twistAnswer]}
+                    </span>
+                  </p>
+                  {!twistCorrect && (
+                    <p className="text-xs">
+                      <span className="font-bold text-gray-500">Correct Answer: </span>
+                      <span className="text-green-600 font-extrabold">{twistQuestion.options[twistQuestion.correct]}</span>
+                    </p>
+                  )}
+                  <div className="mt-2.5 p-2.5 rounded-lg bg-purple-50/50 border border-purple-200/50 text-purple-900 text-xs leading-relaxed font-medium">
+                    <span className="font-extrabold">Explanation: </span>{twistQuestion.explanation}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Ideas List Results */}
+            {isIdeas && (
+              <div className="mb-6 space-y-4">
+                <div className="bg-violet-50/80 border border-violet-100 rounded-2xl p-4">
+                  <span className="font-extrabold text-violet-800 text-sm">💡 Your Brainstormed Ideas:</span>
+                  <div className="mt-3 space-y-2">
+                    {currentAnswer.ideas.filter(idea => idea.trim() !== '').map((idea, idx) => (
+                      <div key={idx} className="flex gap-2 text-sm text-gray-700 bg-white p-2.5 rounded-xl border border-violet-100 font-medium shadow-sm">
+                        <span className="font-black text-violet-600">{idx + 1}.</span>
+                        <span>{idea}</span>
+                      </div>
+                    ))}
+                    {currentAnswer.ideas.filter(idea => idea.trim() !== '').length === 0 && (
+                      <p className="text-gray-400 text-xs italic">No ideas entered.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-teal-50 border border-teal-100 text-center">
+                  <p className="text-2xl mb-1">🌟</p>
+                  <p className="text-sm font-extrabold text-teal-800">Creativity Sparks Unlocked!</p>
+                  <p className="text-xs text-teal-600 mt-1">Thinking outside the box is a superpower. Well done!</p>
+                </div>
+              </div>
+            )}
+
+            {/* Next challenge button */}
+            <button
+              onClick={() => {
+                setShowFeedbackPage(false);
+                if (isLastChallenge) {
+                  handleComplete(true);
+                } else {
+                  goToNextChallenge();
+                }
+              }}
+              className="btn-primary w-full text-base py-3.5 mt-2"
+            >
+              {isLastChallenge ? 'Finish Quest & View Summary 🎉' : 'Proceed to Next Challenge ➔'}
+            </button>
+
+          </div>
         </div>
       </div>
     );
@@ -715,9 +914,29 @@ export default function WeeklyAssessmentPage() {
           <h2 className="text-3xl font-black text-gray-800 mb-1">
             {currentChallenge.title}
           </h2>
-          <p className="text-base font-extrabold text-gray-500 mb-6">
+          <p className="text-base font-extrabold text-gray-500 mb-4">
             Theme: {currentChallenge.theme}
           </p>
+
+          {/* Skill tags */}
+          {currentChallenge.skills && currentChallenge.skills.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2 mb-6">
+              {currentChallenge.skills.map(skKey => {
+                const info = (SKILL_DESCRIPTIONS as any)[skKey];
+                if (!info) return null;
+                return (
+                  <span
+                    key={skKey}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black text-gray-700 shadow-sm border border-gray-200/50 hover:scale-105 transition-transform cursor-default"
+                    style={{ backgroundColor: `${info.color}35` }}
+                  >
+                    <span>{info.emoji}</span>
+                    <span>{info.label}</span>
+                  </span>
+                );
+              })}
+            </div>
+          )}
 
           <div className="bg-gray-50 rounded-2xl p-5 mb-8 text-left border border-gray-100">
             <h4 className="font-extrabold text-sm text-gray-700 mb-2">What you'll do:</h4>
@@ -818,9 +1037,9 @@ export default function WeeklyAssessmentPage() {
               {showTwistContinue ? (
                 <button
                   className="btn-primary"
-                  onClick={isLastChallenge ? () => handleComplete(true) : goToNextChallenge}
+                  onClick={() => setShowFeedbackPage(true)}
                 >
-                  {isLastChallenge ? 'Finish 🎉' : 'Continue to Next Challenge →'}
+                  See Challenge Feedback ➔
                 </button>
               ) : showLockButton ? (
                 <button

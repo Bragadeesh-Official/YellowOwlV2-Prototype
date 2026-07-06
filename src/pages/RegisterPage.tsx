@@ -136,6 +136,7 @@ export default function RegisterPage() {
       guardianPhone,
     });
 
+    localStorage.setItem('yellowowl_newly_registered', 'true');
     navigate('/verify-secret');
   };
 

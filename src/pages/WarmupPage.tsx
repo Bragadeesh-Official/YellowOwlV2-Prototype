@@ -244,12 +244,9 @@ export default function WarmupPage() {
           <p className="text-gray-500 text-base mb-6">
             Great job completing the warm-up!
           </p>
-          <div
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-2xl font-bold mb-8"
-            style={{ backgroundColor: '#fffde7', border: '3px solid #FFEA11' }}
-          >
-            🧠 All {totalQuestions} challenges completed!
-          </div>
+          <p className="text-teal-600 font-black text-lg mb-8">
+            Let's start exploring your den! 🚀
+          </p>
           <div>
             <button className="btn-primary text-lg px-8" onClick={handleEnterDen}>
               Enter the Den! ➔
@@ -349,7 +346,7 @@ export default function WarmupPage() {
                 <button className="btn-primary" onClick={handleNext}>
                   {currentQuestion < totalQuestions - 1
                     ? 'Next Question →'
-                    : 'See My Results! 🎉'}
+                    : 'Complete 🎉'}
                 </button>
               </div>
             )}

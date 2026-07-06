@@ -37,6 +37,7 @@ export interface Challenge {
   color: string;
   questions: (MCQQuestion | DescriptiveQuestion | TwistQuestion | IdeasQuestion)[];
   twistQuestion?: TwistQuestion;
+  skills: string[];
 }
 
 export const WEEKLY_ASSESSMENT: Challenge[] = [
@@ -46,6 +47,7 @@ export const WEEKLY_ASSESSMENT: Challenge[] = [
     theme: 'The Amazing World of Plants',
     emoji: '🌿',
     color: '#2AD5B4',
+    skills: ['thinking', 'reading'],
     questions: [
       {
         type: 'mcq',
@@ -87,6 +89,7 @@ export const WEEKLY_ASSESSMENT: Challenge[] = [
     theme: 'Tales from Around the World',
     emoji: '📚',
     color: '#FFEA11',
+    skills: ['reading', 'listening'],
     questions: [
       {
         type: 'mcq',
@@ -128,6 +131,7 @@ export const WEEKLY_ASSESSMENT: Challenge[] = [
     theme: 'Making the World Better',
     emoji: '💡',
     color: '#A78BFA',
+    skills: ['thinking', 'imagination'],
     questions: [
       {
         type: 'ideas',
@@ -144,6 +148,7 @@ export const WEEKLY_ASSESSMENT: Challenge[] = [
     theme: 'Inventions We Need',
     emoji: '🚀',
     color: '#F97316',
+    skills: ['imagination'],
     questions: [
       {
         type: 'ideas',
@@ -160,6 +165,7 @@ export const WEEKLY_ASSESSMENT: Challenge[] = [
     theme: 'Thinking About Thinking',
     emoji: '🪞',
     color: '#EC4899',
+    skills: ['thinking', 'imagination'],
     questions: [
       {
         type: 'ideas',

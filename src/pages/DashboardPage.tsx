@@ -37,6 +37,10 @@ export default function DashboardPage() {
   const statsRef = useRef<HTMLDivElement>(null);
   const assessCardRef = useRef<HTMLDivElement>(null);
   const bubblesRef = useRef<HTMLDivElement[]>([]);
+  const tourCardRef = useRef<HTMLDivElement>(null);
+
+  const [tourStep, setTourStep] = useState(0);
+  const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0, arrowLeft: 0, arrowDirection: 'up' });
 
   // Defensive profile lookups to prevent crashes
   const skills = profile?.skills || { listening: 0, reading: 0, thinking: 0, imagination: 0 };
@@ -144,6 +148,69 @@ export default function DashboardPage() {
     return () => ctx.revert();
   }, [profile]);
 
+  // ── Onboarding Tour Effects ──
+  useEffect(() => {
+    const isCompleted = localStorage.getItem('yellowowl_den_tour_completed');
+    const isNewlyRegistered = localStorage.getItem('yellowowl_newly_registered') === 'true';
+    if (!isCompleted && isLoggedIn && isNewlyRegistered) {
+      const timer = setTimeout(() => {
+        setTourStep(1);
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    const updatePosition = () => {
+      if (tourStep === 1) {
+        const el = document.getElementById('tour-weekly-box');
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          const tooltipWidth = Math.min(320, window.innerWidth - 32);
+          let targetLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+          targetLeft = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, targetLeft));
+          setTooltipPos({
+            top: rect.bottom + window.scrollY + 16,
+            left: targetLeft,
+            arrowLeft: (rect.left + rect.width / 2) - targetLeft,
+            arrowDirection: 'up',
+          });
+        }
+      } else if (tourStep === 2) {
+        const el = document.getElementById('tour-profile-box');
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          const tooltipWidth = Math.min(300, window.innerWidth - 32);
+          let targetLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+          targetLeft = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, targetLeft));
+          setTooltipPos({
+            top: rect.bottom + window.scrollY + 16,
+            left: targetLeft,
+            arrowLeft: (rect.left + rect.width / 2) - targetLeft,
+            arrowDirection: 'up',
+          });
+        }
+      }
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition);
+    };
+  }, [tourStep]);
+
+  useEffect(() => {
+    if (tourStep > 0 && tourCardRef.current) {
+      gsap.fromTo(tourCardRef.current,
+        { scale: 0.8, opacity: 0, y: 15 },
+        { scale: 1, opacity: 1, y: 0, duration: 0.45, ease: 'back.out(1.5)' }
+      );
+    }
+  }, [tourStep]);
+
   if (!profile) return null;
 
   const progress = assessmentProgress as {
@@ -246,9 +313,22 @@ export default function DashboardPage() {
           </div>
 
           {/* User Profile Info & Actions */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setTourStep(1)}
+              className="text-xs font-black bg-teal-50 hover:bg-teal-100 text-teal-600 px-3 py-2 rounded-2xl border border-teal-200/50 transition-all cursor-pointer flex items-center gap-1 shadow-sm hover:scale-105 active:scale-95"
+            >
+              🗺️ Guide
+            </button>
             {/* Playful Explorer Stats Badge */}
-            <div className="flex items-center gap-3 bg-[#fffde7] px-4 py-1.5 rounded-2xl shadow-sm">
+            <div 
+              id="tour-profile-box"
+              className="flex items-center gap-3 bg-[#fffde7] px-4 py-1.5 rounded-2xl shadow-sm"
+              style={{
+                position: 'relative',
+                zIndex: tourStep === 2 ? 9999 : undefined,
+              }}
+            >
               <div className="flex flex-col items-end">
                 <span className="text-sm font-black text-gray-800 leading-tight">
                   {name}
@@ -328,10 +408,13 @@ export default function DashboardPage() {
         {/* Weekly Adventure Quest Map */}
         <div className="mt-10" ref={assessCardRef}>
           <div
+            id="tour-weekly-box"
             className="rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden"
             style={{
               background: 'linear-gradient(135deg, #2AD5B4 0%, #1FBFA0 100%)',
               boxShadow: '0 12px 28px rgba(42, 213, 180, 0.2)',
+              position: 'relative',
+              zIndex: tourStep === 1 ? 9999 : undefined,
             }}
           >
             <div className="text-center mb-6">
@@ -505,6 +588,87 @@ export default function DashboardPage() {
             🔄 Reset Quest Progress
           </button>
         </div>
+      )}
+
+      {/* Onboarding Tour Overlay */}
+      {tourStep > 0 && (
+        <>
+          {/* Dark Backdrop Mask */}
+          <div 
+            className="fixed inset-0 bg-black/60 z-[9998] transition-opacity duration-300 pointer-events-auto"
+            onClick={() => {
+              localStorage.setItem('yellowowl_den_tour_completed', 'true');
+              setTourStep(0);
+            }}
+          />
+
+          {/* Floating Tooltip Card */}
+          <div
+            ref={tourCardRef}
+            className="absolute z-[9999] bg-white border-4 border-[#FFEA11] rounded-3xl p-5 shadow-2xl transition-all duration-300 max-w-[320px] w-full"
+            style={{
+              top: tooltipPos.top,
+              left: tooltipPos.left,
+            }}
+          >
+            {/* Arrow indicator */}
+            <div 
+              className="absolute w-4 h-4 bg-white border-t-4 border-l-4 border-[#FFEA11] rotate-45"
+              style={{
+                top: -10,
+                left: tooltipPos.arrowLeft - 8,
+              }}
+            />
+
+            {/* Tooltip Content */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-2xl animate-bounce">
+                  {tourStep === 1 ? '🗺️' : '🦉'}
+                </span>
+                <h3 className="font-black text-gray-800 text-sm">
+                  {tourStep === 1 ? 'Weekly Box' : 'Explorer Profile'}
+                </h3>
+              </div>
+              
+              <p className="text-xs font-black text-gray-600 leading-relaxed mb-4">
+                {tourStep === 1 
+                  ? 'This is the Weekly Box where your weekly challenges are displayed! Solve them to unlock treasures!'
+                  : 'This is where you can explore your stats, view your level, and customize your avatar!'}
+              </p>
+
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black text-gray-400 uppercase">
+                  Step {tourStep} of 2
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      localStorage.setItem('yellowowl_den_tour_completed', 'true');
+                      setTourStep(0);
+                    }}
+                    className="text-xs font-bold text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg"
+                  >
+                    Skip
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (tourStep === 1) {
+                        setTourStep(2);
+                      } else {
+                        localStorage.setItem('yellowowl_den_tour_completed', 'true');
+                        setTourStep(0);
+                      }
+                    }}
+                    className="bg-[#FFEA11] hover:bg-[#F3E000] text-gray-800 text-xs font-black px-3.5 py-1.5 rounded-xl shadow-sm hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  >
+                    {tourStep === 1 ? 'Next ➔' : 'Got it! 🎉'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

@@ -15,6 +15,7 @@ interface FormState {
   usageMode: UsageMode | '';
   grade: string;
   schoolId: string;
+  rollNo: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -26,6 +27,7 @@ const EMPTY_FORM: FormState = {
   usageMode: '',
   grade: '',
   schoolId: '',
+  rollNo: '',
 };
 
 const AGES = [9, 10, 11, 12, 13];
@@ -44,6 +46,10 @@ function validatePhone(phone: string) {
   return /^[6-9]\d{9}$/.test(phone.trim());
 }
 
+function validateRollNo(rollNo: string) {
+  return /^[A-Z]{3}\d{3}$/.test(rollNo.trim());
+}
+
 interface BulkRow {
   rowNum: number;
   childName: string;
@@ -51,6 +57,7 @@ interface BulkRow {
   guardianMobile: string;
   guardianEmail: string;
   sessionTime: string;
+  rollNo: string;
   errors: string[];
 }
 
@@ -69,6 +76,7 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
     const guardianMobile = pick('Guardian Mobile', 'Mobile', 'Contact', 'Guardian Contact', 'Phone');
     const guardianEmail = pick('Guardian Email', 'Email');
     const sessionTime = pick('Weekly Session Time', 'Session Time', 'Weekly Session', 'Session', 'Time');
+    const rollNo = pick('Roll No', 'Roll Number', 'RollNo', 'Roll_No').toUpperCase();
 
     const errors: string[] = [];
     if (!childName) errors.push('Name is missing');
@@ -93,12 +101,18 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
     }
 
     if (!sessionTime) {
-      errors.push('Session ');
+      errors.push('Session time is missing');
     } else {
       const sessNum = Number(sessionTime);
       if (isNaN(sessNum) || sessNum < 15 || sessNum > 30) {
         errors.push('Session must be 15–30 min');
       }
+    }
+
+    if (!rollNo) {
+      errors.push('Roll No is missing');
+    } else if (!validateRollNo(rollNo)) {
+      errors.push('Roll No must be 3 letters + 3 digits (e.g. ABC123)');
     }
 
     return {
@@ -108,6 +122,7 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
       guardianMobile,
       guardianEmail,
       sessionTime,
+      rollNo,
       errors,
     };
   });
@@ -115,11 +130,11 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
 
 function downloadTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Child Name', 'Age', 'Guardian Mobile', 'Guardian Email', 'Weekly Session Time'],
-    ['Arjun Kumar', '10', '9876543210', 'parent@example.com', '20'],
-    ['Priya Sharma', '11', '9123456789', 'sharma@example.com', '25'],
+    ['Child Name', 'Age', 'Guardian Mobile', 'Guardian Email', 'Weekly Session Time', 'Roll No'],
+    ['Arjun Kumar', '10', '9876543210', 'parent@example.com', '20', 'ARJ101'],
+    ['Priya Sharma', '11', '9123456789', 'sharma@example.com', '25', 'PRI202'],
   ]);
-  ws['!cols'] = [{ wch: 22 }, { wch: 8 }, { wch: 18 }, { wch: 25 }, { wch: 20 }];
+  ws['!cols'] = [{ wch: 22 }, { wch: 8 }, { wch: 18 }, { wch: 25 }, { wch: 20 }, { wch: 12 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Students Template');
   XLSX.writeFile(wb, 'student_bulk_upload_template.xlsx');
@@ -188,6 +203,7 @@ export default function UsersSection({
       usageMode: user.usageMode,
       grade: user.grade ?? '',
       schoolId: user.schoolId ?? '',
+      rollNo: user.rollNo ?? '',
     });
     setErrors({});
     setView('edit');
@@ -212,6 +228,15 @@ export default function UsersSection({
     if (form.usageMode === 'school') {
       if (!form.schoolId) e.schoolId = 'Tenant selection is required for school mode';
       if (!form.grade) e.grade = 'Grade is required for school mode';
+      if (!form.rollNo.trim()) {
+        e.rollNo = 'Roll number is required';
+      } else if (!validateRollNo(form.rollNo)) {
+        e.rollNo = 'Roll number must be 3 letters + 3 digits (e.g. ABC123)';
+      }
+    } else {
+      if (form.rollNo.trim() && !validateRollNo(form.rollNo)) {
+        e.rollNo = 'Roll number must be 3 letters + 3 digits (e.g. ABC123)';
+      }
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -230,6 +255,7 @@ export default function UsersSection({
       usageMode: form.usageMode as UsageMode,
       grade: form.usageMode === 'school' ? form.grade : undefined,
       schoolId: form.usageMode === 'school' ? form.schoolId : undefined,
+      rollNo: form.rollNo.trim() || undefined,
     };
     if (editingId) {
       setUsers((prev) => prev.map((u) => (u.id === editingId ? payload : u)));
@@ -245,7 +271,8 @@ export default function UsersSection({
   };
 
   const setField = (key: keyof FormState, val: string) => {
-    setForm((f) => ({ ...f, [key]: val }));
+    const finalVal = key === 'rollNo' ? val.toUpperCase() : val;
+    setForm((f) => ({ ...f, [key]: finalVal }));
     setErrors((er) => ({ ...er, [key]: '' }));
   };
 
@@ -296,6 +323,7 @@ export default function UsersSection({
       usageMode: 'school',
       grade: bulkGrade,
       schoolId: bulkSchoolId,
+      rollNo: r.rollNo,
     }));
 
     setUsers((prev) => [...prev, ...newUsers]);
@@ -396,13 +424,14 @@ export default function UsersSection({
                   <th className="text-left px-5 py-3.5 font-bold text-gray-600 whitespace-nowrap">Mode</th>
                   <th className="text-left px-5 py-3.5 font-bold text-gray-600 whitespace-nowrap">Tenant</th>
                   <th className="text-left px-5 py-3.5 font-bold text-gray-600 whitespace-nowrap">Grade</th>
+                  <th className="text-left px-5 py-3.5 font-bold text-gray-600 whitespace-nowrap">Roll No</th>
                   <th className="text-center px-5 py-3.5 font-bold text-gray-600 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="text-center py-12 text-gray-400">
+                    <td colSpan={10} className="text-center py-12 text-gray-400">
                       <div className="text-3xl mb-2">👥</div>
                       <div>No users found</div>
                     </td>
@@ -436,6 +465,7 @@ export default function UsersSection({
                         </td>
                         <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">{schoolName}</td>
                         <td className="px-5 py-3.5 text-gray-500">{user.grade ?? '—'}</td>
+                        <td className="px-5 py-3.5 text-gray-800 font-mono font-semibold">{user.rollNo ?? '—'}</td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center justify-center gap-2">
                             {deleteConfirm === user.id ? (
@@ -699,6 +729,21 @@ export default function UsersSection({
                   </select>
                   {errors.grade && <p className="mt-1 text-xs text-red-500">{errors.grade}</p>}
                 </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Roll Number <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={form.rollNo}
+                    onChange={(e) => setField('rollNo', e.target.value)}
+                    placeholder="e.g. ABC123"
+                    maxLength={6}
+                    className={inputClass(errors.rollNo)}
+                  />
+                  {errors.rollNo && <p className="mt-1 text-xs text-red-500">{errors.rollNo}</p>}
+                </div>
               </>
             )}
 
@@ -813,7 +858,7 @@ export default function UsersSection({
                 ) : (
                   <div>
                     <div className="text-sm text-gray-600 font-medium">Click to upload spreadsheet (.xlsx)</div>
-                    <div className="text-xs text-gray-400 mt-1">Columns: Child Name, Age, Guardian Mobile, Guardian Email, Weekly Session Time</div>
+                    <div className="text-xs text-gray-400 mt-1">Columns: Child Name, Age, Guardian Mobile, Guardian Email, Weekly Session Time, Roll No</div>
                   </div>
                 )}
               </div>
@@ -852,6 +897,7 @@ export default function UsersSection({
                         <th className="p-2 font-semibold text-gray-600">Age</th>
                         <th className="p-2 font-semibold text-gray-600">Mobile</th>
                         <th className="p-2 font-semibold text-gray-600">Session</th>
+                        <th className="p-2 font-semibold text-gray-600">Roll No</th>
                         <th className="p-2 font-semibold text-gray-600">Status</th>
                       </tr>
                     </thead>
@@ -863,6 +909,7 @@ export default function UsersSection({
                           <td className="p-2 text-gray-600">{r.age || '—'}</td>
                           <td className="p-2 text-gray-600">{r.guardianMobile || '—'}</td>
                           <td className="p-2 text-gray-600">{r.sessionTime ? r.sessionTime + ' min' : '—'}</td>
+                          <td className="p-2 text-gray-800 font-mono font-semibold">{r.rollNo || '—'}</td>
                           <td className="p-2">
                             {r.errors.length > 0 ? (
                               <span className="text-red-500 font-bold" title={r.errors.join(', ')}>

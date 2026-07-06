@@ -22,15 +22,19 @@ interface UserForm {
   sessionTime: string;
   guardianMobile: string;
   guardianEmail: string;
+  rollNo: string;
 }
 
-const EMPTY: UserForm = { schoolId: '', grade: '', childName: '', age: '', sessionTime: '', guardianMobile: '', guardianEmail: '' };
+const EMPTY: UserForm = { schoolId: '', grade: '', childName: '', age: '', sessionTime: '', guardianMobile: '', guardianEmail: '', rollNo: '' };
 
 type ErrMap = Partial<Record<keyof UserForm, string>>;
 
 function genId() { return 'u' + Math.random().toString(36).slice(2, 9); }
-function isMobile(v: string) { return /^[6-9]\d{9}$/.test(v.trim()); }
-function isEmail(v: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+  function isMobile(v: string) { return /^[6-9]\d{9}$/.test(v.trim()); }
+  function isEmail(v: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+function validateRollNo(rollNo: string) {
+  return /^[A-Z]{3}\d{3}$/.test(rollNo.trim());
+}
 
 function validateStep(step: number, form: UserForm): ErrMap {
   const e: ErrMap = {};
@@ -42,6 +46,11 @@ function validateStep(step: number, form: UserForm): ErrMap {
     if (!form.childName.trim()) e.childName = 'Child name is required';
     if (!form.age) e.age = 'Age is required';
     if (!form.sessionTime) e.sessionTime = 'Session time is required';
+    if (!form.rollNo.trim()) {
+      e.rollNo = 'Roll number is required';
+    } else if (!validateRollNo(form.rollNo)) {
+      e.rollNo = 'Roll number must be 3 letters + 3 digits (e.g. ABC123)';
+    }
   }
   if (step === 2) {
     if (!form.guardianMobile.trim()) e.guardianMobile = 'Guardian mobile is required';
@@ -102,6 +111,7 @@ interface BulkRow {
   guardianMobile: string;
   sessionTime: string;
   guardianEmail: string;
+  rollNo: string;
   errors: string[];
 }
 
@@ -120,6 +130,7 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
     const guardianMobile = pick('Guardian Mobile', 'Mobile', 'Contact', 'Guardian Contact');
     const sessionTime = pick('Session Time', 'Session');
     const guardianEmail = pick('Guardian Email', 'Email');
+    const rollNo = pick('Roll No', 'Roll Number', 'RollNo', 'Roll_No').toUpperCase();
 
     const errors: string[] = [];
     if (!childName) errors.push('Name is missing');
@@ -131,16 +142,22 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
       errors.push('Session must be 15–30 min');
     }
 
-    return { rowNum: idx + 2, childName, age, guardianMobile, sessionTime, guardianEmail, errors };
+    if (!rollNo) {
+      errors.push('Roll No is missing');
+    } else if (!validateRollNo(rollNo)) {
+      errors.push('Roll No must be 3 letters + 3 digits (e.g. ABC123)');
+    }
+
+    return { rowNum: idx + 2, childName, age, guardianMobile, sessionTime, guardianEmail, rollNo, errors };
   });
 }
 
 function downloadTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Name', 'Age', 'Guardian Mobile', 'Session Time', 'Guardian Email'],
-    ['Arjun Kumar', '10', '9876543210', '20', 'parent@example.com'],
+    ['Name', 'Age', 'Guardian Mobile', 'Session Time', 'Guardian Email', 'Roll No'],
+    ['Arjun Kumar', '10', '9876543210', '20', 'parent@example.com', 'ARJ101'],
   ]);
-  ws['!cols'] = [{ wch: 20 }, { wch: 8 }, { wch: 18 }, { wch: 14 }, { wch: 25 }];
+  ws['!cols'] = [{ wch: 20 }, { wch: 8 }, { wch: 18 }, { wch: 14 }, { wch: 25 }, { wch: 12 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Students');
   XLSX.writeFile(wb, 'student_upload_template.xlsx');
@@ -175,8 +192,16 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
   const [editForm, setEditForm] = useState<UserForm>(EMPTY);
   const [editErrors, setEditErrors] = useState<ErrMap>({});
 
-  const onChange = (k: keyof UserForm, v: string) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: '' })); };
-  const onEditChange = (k: keyof UserForm, v: string) => { setEditForm(f => ({ ...f, [k]: v })); setEditErrors(e => ({ ...e, [k]: '' })); };
+  const onChange = (k: keyof UserForm, v: string) => {
+    const val = k === 'rollNo' ? v.toUpperCase() : v;
+    setForm(f => ({ ...f, [k]: val }));
+    setErrors(e => ({ ...e, [k]: '' }));
+  };
+  const onEditChange = (k: keyof UserForm, v: string) => {
+    const val = k === 'rollNo' ? v.toUpperCase() : v;
+    setEditForm(f => ({ ...f, [k]: val }));
+    setEditErrors(e => ({ ...e, [k]: '' }));
+  };
 
   const currentSteps = uploadMode === 'bulk' ? BULK_STEPS : INDIVIDUAL_STEPS;
 
@@ -227,6 +252,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
       usageMode: 'school',
       grade: form.grade,
       schoolId: form.schoolId,
+      rollNo: r.rollNo,
     }));
     setUsers(p => [...p, ...newUsers]);
     setView('list');
@@ -282,14 +308,14 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #f1f5f9' }}>
-                  {['Child Name', 'School', 'Age', 'Grade', 'Guardian Mobile', 'Guardian Email', 'Session', 'Actions'].map(h => (
+                  {['Child Name', 'School', 'Age', 'Grade', 'Roll No', 'Guardian Mobile', 'Guardian Email', 'Session', 'Actions'].map(h => (
                     <th key={h} style={{ textAlign: h === 'Actions' ? 'center' : 'left', padding: '14px 16px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>No school users found</td></tr>
+                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>No school users found</td></tr>
                 ) : paginatedUsers.map((u, i) => {
                   const school = schools.find(s => s.id === u.schoolId);
                   const schoolName = school ? `${school.name} (${school.branch})` : '—';
@@ -301,6 +327,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                       <td style={{ padding: '14px 16px' }}>
                         <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: '#eff6ff', color: '#1d4ed8' }}>{u.grade}</span>
                       </td>
+                      <td style={{ padding: '14px 16px', color: '#1e293b', fontWeight: 600, fontFamily: 'monospace' }}>{u.rollNo || '—'}</td>
                       <td style={{ padding: '14px 16px', color: '#475569' }}>{u.guardianContact}</td>
                       <td style={{ padding: '14px 16px', color: '#64748b' }}>{u.guardianEmail || '—'}</td>
                       <td style={{ padding: '14px 16px', color: '#475569' }}>{u.weeklySession} min</td>
@@ -324,7 +351,8 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                                 age: String(u.age),
                                 sessionTime: String(u.weeklySession),
                                 guardianMobile: u.guardianContact,
-                                guardianEmail: u.guardianEmail ?? ''
+                                guardianEmail: u.guardianEmail ?? '',
+                                rollNo: u.rollNo ?? ''
                               });
                               setEditErrors({}); setView('edit');
                             }}
@@ -451,6 +479,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
         guardianContact: form.guardianMobile, guardianEmail: form.guardianEmail || undefined,
         weeklySession: Number(form.sessionTime), usageMode: 'school', grade: form.grade,
         schoolId: form.schoolId,
+        rollNo: form.rollNo,
       }]);
       setView('list');
     };
@@ -561,6 +590,12 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                 </select>
                 {errors.sessionTime && <p style={errTxt}>{errors.sessionTime}</p>}
               </div>
+              <div>
+                <label style={lbl}>Roll Number <span style={{ color: '#ef4444' }}>*</span></label>
+                <input type="text" value={form.rollNo} placeholder="e.g. ABC123" maxLength={6}
+                  onChange={e => onChange('rollNo', e.target.value)} style={iStyle(errors.rollNo)} />
+                {errors.rollNo && <p style={errTxt}>{errors.rollNo}</p>}
+              </div>
             </div>
           )}
 
@@ -593,6 +628,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                 <FieldRow label="Child Name" value={form.childName} />
                 <FieldRow label="Age" value={form.age ? `${form.age} years` : ''} />
                 <FieldRow label="Weekly Session" value={form.sessionTime ? `${form.sessionTime} minutes` : ''} />
+                <FieldRow label="Roll Number" value={form.rollNo} />
                 <FieldRow label="Guardian Mobile" value={form.guardianMobile} />
                 <FieldRow label="Guardian Email" value={form.guardianEmail || 'Not provided'} />
               </div>
@@ -606,7 +642,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', margin: 0 }}>Upload student data for {form.grade}</p>
                   <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0' }}>
-                    Mandatory columns: Name, Age, Guardian Mobile, Session Time
+                    Mandatory columns: Name, Age, Guardian Mobile, Session Time, Roll No
                   </p>
                 </div>
                 <button onClick={downloadTemplate} style={{
@@ -685,7 +721,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                       <thead style={{ position: 'sticky', top: 0, background: '#f8fafc' }}>
                         <tr>
-                          {['Row', 'Name', 'Age', 'Guardian Mobile', 'Session', 'Email', 'Status'].map(h => (
+                          {['Row', 'Name', 'Age', 'Guardian Mobile', 'Session', 'Email', 'Roll No', 'Status'].map(h => (
                             <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>{h}</th>
                           ))}
                         </tr>
@@ -699,6 +735,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                             <td style={{ padding: '8px 12px', color: '#475569' }}>{row.guardianMobile || '—'}</td>
                             <td style={{ padding: '8px 12px', color: '#475569' }}>{row.sessionTime || '—'}</td>
                             <td style={{ padding: '8px 12px', color: '#64748b' }}>{row.guardianEmail || '—'}</td>
+                            <td style={{ padding: '8px 12px', color: '#1e293b', fontWeight: 600, fontFamily: 'monospace' }}>{row.rollNo || '—'}</td>
                             <td style={{ padding: '8px 12px' }}>
                               {row.errors.length === 0 ? (
                                 <span style={{ color: '#16a34a', fontSize: 11, fontWeight: 700 }}>Ready</span>
@@ -752,6 +789,11 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
     if (!editForm.childName.trim()) e.childName = 'Child name is required';
     if (!editForm.age) e.age = 'Age is required';
     if (!editForm.sessionTime) e.sessionTime = 'Session time is required';
+    if (!editForm.rollNo.trim()) {
+      e.rollNo = 'Roll number is required';
+    } else if (!validateRollNo(editForm.rollNo)) {
+      e.rollNo = 'Roll number must be 3 letters + 3 digits (e.g. ABC123)';
+    }
     if (!editForm.guardianMobile.trim()) e.guardianMobile = 'Guardian mobile is required';
     else if (!isMobile(editForm.guardianMobile)) e.guardianMobile = 'Enter a valid 10-digit mobile number';
     if (editForm.guardianEmail && !isEmail(editForm.guardianEmail)) e.guardianEmail = 'Enter a valid email address';
@@ -762,6 +804,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
       age: Number(editForm.age), guardianContact: editForm.guardianMobile,
       guardianEmail: editForm.guardianEmail || undefined,
       weeklySession: Number(editForm.sessionTime),
+      rollNo: editForm.rollNo,
     } : u));
     setView('list');
   };
@@ -811,6 +854,11 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
               {SESSION_OPTS.map(t => <option key={t} value={t}>{t} minutes</option>)}
             </select>
             {editErrors.sessionTime && <p style={errTxt}>{editErrors.sessionTime}</p>}
+          </div>
+          <div>
+            <label style={lbl}>Roll Number <span style={{ color: '#ef4444' }}>*</span></label>
+            <input type="text" value={editForm.rollNo} onChange={e => onEditChange('rollNo', e.target.value)} maxLength={6} style={iStyle(editErrors.rollNo)} />
+            {editErrors.rollNo && <p style={errTxt}>{editErrors.rollNo}</p>}
           </div>
           <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 20 }}>
             <div>

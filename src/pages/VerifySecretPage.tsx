@@ -1,7 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
-import { MOCK_INVITE_CODE } from '@/mock/userData';
 import { useApp } from '@/context/AppContext';
 import logo from '@/assets/yellowowllogo.png';
 
@@ -61,17 +60,6 @@ export default function VerifySecretPage() {
 
     if (!code.trim()) {
       setError('Please enter your secret code.');
-      return;
-    }
-    if (code.trim().toLowerCase() !== MOCK_INVITE_CODE.toLowerCase()) {
-      setError('Incorrect secret code. Please check your WhatsApp.');
-      if (inputRef.current) {
-        gsap.fromTo(inputRef.current,
-          { x: -8 },
-          { x: 0, duration: 0.5, ease: 'elastic.out(1, 0.3)', clearProps: 'x' }
-        );
-        gsap.to(inputRef.current, { x: 8, duration: 0.1, yoyo: true, repeat: 3, ease: 'power1.inOut' });
-      }
       return;
     }
 

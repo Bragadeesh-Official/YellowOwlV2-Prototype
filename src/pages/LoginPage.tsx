@@ -30,7 +30,7 @@ type LoginMode = 'choose' | 'student-login-choice' | 'student-login-code' | 'stu
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { register, login } = useApp();
+  const { register } = useApp();
 
   const [mode, setMode] = useState<LoginMode>('choose');
 
@@ -105,13 +105,12 @@ export default function LoginPage() {
     if (!p) {
       p = { ...MOCK_CHILD_PROFILE, passwordEnv: 'desert', passwordAnimal: 'camel', name: 'Alex' };
     } else {
-      p.passwordEnv = 'desert';
-      p.passwordAnimal = 'camel';
+      if (!p.passwordEnv) p.passwordEnv = 'desert';
+      if (!p.passwordAnimal) p.passwordAnimal = 'camel';
     }
     localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
     register(p);
-    login(); // directly log in
-    navigate('/dashboard'); // go straight to dashboard
+    navigate('/image-password');
   };
 
   const handleChildMobileSubmit = (e: React.FormEvent) => {
@@ -131,13 +130,12 @@ export default function LoginPage() {
       p = { ...MOCK_CHILD_PROFILE, passwordEnv: 'desert', passwordAnimal: 'camel', name: 'Alex', guardianPhone: num };
     } else {
       p.guardianPhone = num;
-      p.passwordEnv = 'desert';
-      p.passwordAnimal = 'camel';
+      if (!p.passwordEnv) p.passwordEnv = 'desert';
+      if (!p.passwordAnimal) p.passwordAnimal = 'camel';
     }
     localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
     register(p);
-    login(); // directly log in
-    navigate('/dashboard'); // go straight to dashboard
+    navigate('/image-password');
   };
 
   const handleAdminSubmit = (e: React.FormEvent) => {

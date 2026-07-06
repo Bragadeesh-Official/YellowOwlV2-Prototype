@@ -1,4 +1,3 @@
-export const MOCK_INVITE_CODE = 'sws2026';
 
 export const MOCK_ENVIRONMENTS = [
   { id: 'desert', label: 'Desert', emoji: '🏜️', bg: '#F5DEB3', description: 'Hot sandy dunes!' },

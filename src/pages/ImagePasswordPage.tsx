@@ -15,7 +15,7 @@ const BUBBLES = [
 export default function ImagePasswordPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { profile, updateProfile, login } = useApp();
+  const { updateProfile, login } = useApp();
 
   const isSetup = location.pathname.includes('/setup-password');
 
@@ -162,18 +162,11 @@ export default function ImagePasswordPage() {
       updateProfile({ passwordEnv: selectedEnv, passwordAnimal: selectedAnimal });
       navigate('/interests');
     } else {
-      const correctEnv = profile?.passwordEnv || 'forest';
-      const correctAnimal = profile?.passwordAnimal || 'owl';
-      if (selectedEnv === correctEnv && selectedAnimal === correctAnimal) {
-        setErrorMsg('');
-        login();
-        navigate('/dashboard');
-      } else {
-        setErrorMsg("Oops! That's not the right password picture. Try again! 🙈");
-        if (cardRef.current) {
-          gsap.fromTo(cardRef.current, { x: -8 }, { x: 0, duration: 0.4, ease: 'elastic.out(1, 0.3)' });
-        }
-      }
+      // No auth, for now - accept any selected env and animal
+      setErrorMsg('');
+      updateProfile({ passwordEnv: selectedEnv, passwordAnimal: selectedAnimal });
+      login();
+      navigate('/dashboard');
     }
   };
 
