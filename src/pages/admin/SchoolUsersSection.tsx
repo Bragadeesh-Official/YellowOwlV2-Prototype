@@ -23,9 +23,10 @@ interface UserForm {
   guardianMobile: string;
   guardianEmail: string;
   rollNo: string;
+  countryCode: string;
 }
 
-const EMPTY: UserForm = { schoolId: '', grade: '', childName: '', age: '', sessionTime: '', guardianMobile: '', guardianEmail: '', rollNo: '' };
+const EMPTY: UserForm = { schoolId: '', grade: '', childName: '', age: '', sessionTime: '', guardianMobile: '', guardianEmail: '', rollNo: '', countryCode: '+91' };
 
 type ErrMap = Partial<Record<keyof UserForm, string>>;
 
@@ -112,8 +113,18 @@ interface BulkRow {
   sessionTime: string;
   guardianEmail: string;
   rollNo: string;
+  countryCode: string;
   errors: string[];
 }
+
+const COUNTRY_CODES = [
+  { code: '+91', label: '🇮🇳 +91' },
+  { code: '+1', label: '🇺🇸 +1' },
+  { code: '+44', label: '🇬🇧 +44' },
+  { code: '+971', label: '🇦🇪 +971' },
+  { code: '+65', label: '🇸🇬 +65' },
+  { code: '+61', label: '🇦🇺 +61' },
+];
 
 function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
   return raw.map((r, idx) => {
@@ -131,6 +142,14 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
     const sessionTime = pick('Session Time', 'Session');
     const guardianEmail = pick('Guardian Email', 'Email');
     const rollNo = pick('Roll No', 'Roll Number', 'RollNo', 'Roll_No').toUpperCase();
+    let countryCode = pick('Country Code', 'CountryCode', 'Code').trim();
+    if (countryCode) {
+      if (!countryCode.startsWith('+')) {
+        countryCode = '+' + countryCode;
+      }
+    } else {
+      countryCode = '+91';
+    }
 
     const errors: string[] = [];
     if (!childName) errors.push('Name is missing');
@@ -148,16 +167,20 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
       errors.push('Roll No must be 3 letters + 3 digits (e.g. ABC123)');
     }
 
-    return { rowNum: idx + 2, childName, age, guardianMobile, sessionTime, guardianEmail, rollNo, errors };
+    if (!/^\+\d{1,4}$/.test(countryCode)) {
+      errors.push('Invalid country code (e.g. +91)');
+    }
+
+    return { rowNum: idx + 2, childName, age, guardianMobile, sessionTime, guardianEmail, rollNo, countryCode, errors };
   });
 }
 
 function downloadTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Name', 'Age', 'Guardian Mobile', 'Session Time', 'Guardian Email', 'Roll No'],
-    ['Arjun Kumar', '10', '9876543210', '20', 'parent@example.com', 'ARJ101'],
+    ['Name', 'Age', 'Guardian Mobile', 'Session Time', 'Guardian Email', 'Roll No', 'Country Code'],
+    ['Arjun Kumar', '10', '9876543210', '20', 'parent@example.com', 'ARJ101', '+91'],
   ]);
-  ws['!cols'] = [{ wch: 20 }, { wch: 8 }, { wch: 18 }, { wch: 14 }, { wch: 25 }, { wch: 12 }];
+  ws['!cols'] = [{ wch: 20 }, { wch: 8 }, { wch: 18 }, { wch: 14 }, { wch: 25 }, { wch: 12 }, { wch: 15 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Students');
   XLSX.writeFile(wb, 'student_upload_template.xlsx');
@@ -253,6 +276,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
       grade: form.grade,
       schoolId: form.schoolId,
       rollNo: r.rollNo,
+      countryCode: r.countryCode,
     }));
     setUsers(p => [...p, ...newUsers]);
     setView('list');
@@ -328,7 +352,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                         <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: '#eff6ff', color: '#1d4ed8' }}>{u.grade}</span>
                       </td>
                       <td style={{ padding: '14px 16px', color: '#1e293b', fontWeight: 600, fontFamily: 'monospace' }}>{u.rollNo || '—'}</td>
-                      <td style={{ padding: '14px 16px', color: '#475569' }}>{u.guardianContact}</td>
+                      <td style={{ padding: '14px 16px', color: '#475569' }}>{u.countryCode ? `${u.countryCode} ` : ''}{u.guardianContact}</td>
                       <td style={{ padding: '14px 16px', color: '#64748b' }}>{u.guardianEmail || '—'}</td>
                       <td style={{ padding: '14px 16px', color: '#475569' }}>{u.weeklySession} min</td>
                       <td style={{ padding: '14px 16px', textAlign: 'center' }}>
@@ -352,7 +376,8 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                                 sessionTime: String(u.weeklySession),
                                 guardianMobile: u.guardianContact,
                                 guardianEmail: u.guardianEmail ?? '',
-                                rollNo: u.rollNo ?? ''
+                                rollNo: u.rollNo ?? '',
+                                countryCode: u.countryCode ?? '+91'
                               });
                               setEditErrors({}); setView('edit');
                             }}
@@ -480,6 +505,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
         weeklySession: Number(form.sessionTime), usageMode: 'school', grade: form.grade,
         schoolId: form.schoolId,
         rollNo: form.rollNo,
+        countryCode: form.countryCode,
       }]);
       setView('list');
     };
@@ -604,8 +630,31 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div>
                 <label style={lbl}>Guardian Mobile Number <span style={{ color: '#ef4444' }}>*</span></label>
-                <input type="tel" value={form.guardianMobile} placeholder="10-digit mobile number" maxLength={10}
-                  onChange={e => onChange('guardianMobile', e.target.value)} style={iStyle(errors.guardianMobile)} />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <select
+                    value={form.countryCode}
+                    onChange={(e) => onChange('countryCode', e.target.value)}
+                    style={{
+                      ...iStyle(),
+                      width: '100px',
+                      background: 'white',
+                    }}
+                  >
+                    {COUNTRY_CODES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="tel"
+                    value={form.guardianMobile}
+                    placeholder="10-digit mobile number"
+                    maxLength={10}
+                    onChange={(e) => onChange('guardianMobile', e.target.value.replace(/\D/g, ''))}
+                    style={{ ...iStyle(errors.guardianMobile), flex: 1 }}
+                  />
+                </div>
                 {errors.guardianMobile && <p style={errTxt}>{errors.guardianMobile}</p>}
               </div>
               <div>
@@ -629,7 +678,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                 <FieldRow label="Age" value={form.age ? `${form.age} years` : ''} />
                 <FieldRow label="Weekly Session" value={form.sessionTime ? `${form.sessionTime} minutes` : ''} />
                 <FieldRow label="Roll Number" value={form.rollNo} />
-                <FieldRow label="Guardian Mobile" value={form.guardianMobile} />
+                <FieldRow label="Guardian Mobile" value={`${form.countryCode} ${form.guardianMobile}`} />
                 <FieldRow label="Guardian Email" value={form.guardianEmail || 'Not provided'} />
               </div>
             </div>
@@ -721,7 +770,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                       <thead style={{ position: 'sticky', top: 0, background: '#f8fafc' }}>
                         <tr>
-                          {['Row', 'Name', 'Age', 'Guardian Mobile', 'Session', 'Email', 'Roll No', 'Status'].map(h => (
+                          {['Row', 'Name', 'Age', 'Country Code', 'Guardian Mobile', 'Session', 'Email', 'Roll No', 'Status'].map(h => (
                             <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>{h}</th>
                           ))}
                         </tr>
@@ -732,6 +781,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                             <td style={{ padding: '8px 12px', color: '#94a3b8' }}>{row.rowNum}</td>
                             <td style={{ padding: '8px 12px', fontWeight: 600, color: '#1e293b' }}>{row.childName || '—'}</td>
                             <td style={{ padding: '8px 12px', color: '#475569' }}>{row.age || '—'}</td>
+                            <td style={{ padding: '8px 12px', color: '#475569' }}>{row.countryCode || '—'}</td>
                             <td style={{ padding: '8px 12px', color: '#475569' }}>{row.guardianMobile || '—'}</td>
                             <td style={{ padding: '8px 12px', color: '#475569' }}>{row.sessionTime || '—'}</td>
                             <td style={{ padding: '8px 12px', color: '#64748b' }}>{row.guardianEmail || '—'}</td>
@@ -805,6 +855,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
       guardianEmail: editForm.guardianEmail || undefined,
       weeklySession: Number(editForm.sessionTime),
       rollNo: editForm.rollNo,
+      countryCode: editForm.countryCode,
     } : u));
     setView('list');
   };
@@ -863,7 +914,30 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
           <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 20 }}>
             <div>
               <label style={lbl}>Guardian Mobile Number <span style={{ color: '#ef4444' }}>*</span></label>
-              <input type="tel" value={editForm.guardianMobile} maxLength={10} onChange={e => onEditChange('guardianMobile', e.target.value)} style={iStyle(editErrors.guardianMobile)} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <select
+                  value={editForm.countryCode}
+                  onChange={(e) => onEditChange('countryCode', e.target.value)}
+                  style={{
+                    ...iStyle(),
+                    width: '100px',
+                    background: 'white',
+                  }}
+                >
+                  {COUNTRY_CODES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  value={editForm.guardianMobile}
+                  maxLength={10}
+                  onChange={(e) => onEditChange('guardianMobile', e.target.value.replace(/\D/g, ''))}
+                  style={{ ...iStyle(editErrors.guardianMobile), flex: 1 }}
+                />
+              </div>
               {editErrors.guardianMobile && <p style={errTxt}>{editErrors.guardianMobile}</p>}
             </div>
           </div>

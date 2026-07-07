@@ -11,9 +11,10 @@ interface UserForm {
   sessionTime: string;
   guardianMobile: string;
   guardianEmail: string;
+  countryCode: string;
 }
 
-const EMPTY: UserForm = { childName: '', age: '', sessionTime: '', guardianMobile: '', guardianEmail: '' };
+const EMPTY: UserForm = { childName: '', age: '', sessionTime: '', guardianMobile: '', guardianEmail: '', countryCode: '+91' };
 const STEPS = ['Child Info', 'Guardian Info', 'Review'];
 const AGES = [9, 10, 11, 12, 13];
 const SESSION_OPTS = [15, 20, 25, 30];
@@ -21,6 +22,15 @@ const SESSION_OPTS = [15, 20, 25, 30];
 function genId() { return 'u' + Math.random().toString(36).slice(2, 9); }
 function isEmail(v: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
 function isMobile(v: string) { return /^[6-9]\d{9}$/.test(v.trim()); }
+
+const COUNTRY_CODES = [
+  { code: '+91', label: '🇮🇳 +91' },
+  { code: '+1', label: '🇺🇸 +1' },
+  { code: '+44', label: '🇬🇧 +44' },
+  { code: '+971', label: '🇦🇪 +971' },
+  { code: '+65', label: '🇸🇬 +65' },
+  { code: '+61', label: '🇦🇺 +61' },
+];
 
 type ErrMap = Partial<Record<keyof UserForm, string>>;
 
@@ -123,8 +133,31 @@ function UserFormStep1({ form, errors, onChange }: { form: UserForm; errors: Err
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
         <label style={lbl}>Guardian Mobile Number <span style={{ color: '#ef4444' }}>*</span></label>
-        <input type="tel" value={form.guardianMobile} placeholder="10-digit mobile number" maxLength={10}
-          onChange={e => onChange('guardianMobile', e.target.value)} style={iStyle(errors.guardianMobile)} />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <select
+            value={form.countryCode}
+            onChange={(e) => onChange('countryCode', e.target.value)}
+            style={{
+              ...iStyle(),
+              width: '100px',
+              background: 'white',
+            }}
+          >
+            {COUNTRY_CODES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.code}
+              </option>
+            ))}
+          </select>
+          <input
+            type="tel"
+            value={form.guardianMobile}
+            placeholder="10-digit mobile number"
+            maxLength={10}
+            onChange={(e) => onChange('guardianMobile', e.target.value.replace(/\D/g, ''))}
+            style={{ ...iStyle(errors.guardianMobile), flex: 1 }}
+          />
+        </div>
         {errors.guardianMobile && <p style={errTxt}>{errors.guardianMobile}</p>}
       </div>
       <div>
@@ -224,7 +257,7 @@ export default function GeneralUsersSection({ users, setUsers }: {
                   <tr key={u.id} style={{ background: i % 2 === 0 ? 'white' : '#fafbfc', borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '14px 16px', fontWeight: 600, color: '#1e293b' }}>{u.childName}</td>
                     <td style={{ padding: '14px 16px', color: '#475569' }}>{u.age} yrs</td>
-                    <td style={{ padding: '14px 16px', color: '#475569' }}>{u.guardianContact}</td>
+                    <td style={{ padding: '14px 16px', color: '#475569' }}>{u.countryCode ? `${u.countryCode} ` : ''}{u.guardianContact}</td>
                     <td style={{ padding: '14px 16px', color: '#64748b' }}>{u.guardianEmail || '—'}</td>
                     <td style={{ padding: '14px 16px', color: '#475569' }}>{u.weeklySession} min</td>
                     <td style={{ padding: '14px 16px' }}><ModeBadge mode={u.usageMode} /></td>
@@ -241,7 +274,7 @@ export default function GeneralUsersSection({ users, setUsers }: {
                         <span style={{ display: 'inline-flex', gap: 8 }}>
                           <button onClick={() => {
                             setEditUser(u);
-                            setEditForm({ childName: u.childName, age: String(u.age), sessionTime: String(u.weeklySession), guardianMobile: u.guardianContact, guardianEmail: u.guardianEmail ?? '' });
+                            setEditForm({ childName: u.childName, age: String(u.age), sessionTime: String(u.weeklySession), guardianMobile: u.guardianContact, guardianEmail: u.guardianEmail ?? '', countryCode: u.countryCode ?? '+91' });
                             setEditErrors({}); setView('edit');
                           }}
                             title="Edit User"
@@ -365,6 +398,7 @@ export default function GeneralUsersSection({ users, setUsers }: {
         id: genId(), childName: form.childName, age: Number(form.age),
         guardianContact: form.guardianMobile, guardianEmail: form.guardianEmail || undefined,
         weeklySession: Number(form.sessionTime), usageMode: 'general',
+        countryCode: form.countryCode,
       }]);
       setView('list');
     };
@@ -388,7 +422,7 @@ export default function GeneralUsersSection({ users, setUsers }: {
                 <FieldRow label="Child Name" value={form.childName} />
                 <FieldRow label="Age" value={form.age ? `${form.age} years` : ''} />
                 <FieldRow label="Weekly Session" value={form.sessionTime ? `${form.sessionTime} minutes` : ''} />
-                <FieldRow label="Guardian Mobile" value={form.guardianMobile} />
+                <FieldRow label="Guardian Mobile" value={`${form.countryCode} ${form.guardianMobile}`} />
                 <FieldRow label="Guardian Email" value={form.guardianEmail || 'Not provided'} />
                 <FieldRow label="Usage Mode" value="General" />
               </div>
@@ -421,6 +455,7 @@ export default function GeneralUsersSection({ users, setUsers }: {
       ...u, childName: editForm.childName, age: Number(editForm.age),
       guardianContact: editForm.guardianMobile, guardianEmail: editForm.guardianEmail || undefined,
       weeklySession: Number(editForm.sessionTime),
+      countryCode: editForm.countryCode,
     } : u));
     setView('list');
   };

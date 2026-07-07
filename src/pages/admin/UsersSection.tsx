@@ -16,6 +16,7 @@ interface FormState {
   grade: string;
   schoolId: string;
   rollNo: string;
+  countryCode: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -28,7 +29,17 @@ const EMPTY_FORM: FormState = {
   grade: '',
   schoolId: '',
   rollNo: '',
+  countryCode: '+91',
 };
+
+const COUNTRY_CODES = [
+  { code: '+91', label: '🇮🇳 +91' },
+  { code: '+1', label: '🇺🇸 +1' },
+  { code: '+44', label: '🇬🇧 +44' },
+  { code: '+971', label: '🇦🇪 +971' },
+  { code: '+65', label: '🇸🇬 +65' },
+  { code: '+61', label: '🇦🇺 +61' },
+];
 
 const AGES = [9, 10, 11, 12, 13];
 const SESSION_TIMES = [15, 20, 25, 30];
@@ -58,6 +69,7 @@ interface BulkRow {
   guardianEmail: string;
   sessionTime: string;
   rollNo: string;
+  countryCode: string;
   errors: string[];
 }
 
@@ -77,6 +89,14 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
     const guardianEmail = pick('Guardian Email', 'Email');
     const sessionTime = pick('Weekly Session Time', 'Session Time', 'Weekly Session', 'Session', 'Time');
     const rollNo = pick('Roll No', 'Roll Number', 'RollNo', 'Roll_No').toUpperCase();
+    let countryCode = pick('Country Code', 'CountryCode', 'Code').trim();
+    if (countryCode) {
+      if (!countryCode.startsWith('+')) {
+        countryCode = '+' + countryCode;
+      }
+    } else {
+      countryCode = '+91';
+    }
 
     const errors: string[] = [];
     if (!childName) errors.push('Name is missing');
@@ -115,6 +135,10 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
       errors.push('Roll No must be 3 letters + 3 digits (e.g. ABC123)');
     }
 
+    if (!/^\+\d{1,4}$/.test(countryCode)) {
+      errors.push('Invalid country code (e.g. +91)');
+    }
+
     return {
       rowNum: idx + 2,
       childName,
@@ -123,6 +147,7 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
       guardianEmail,
       sessionTime,
       rollNo,
+      countryCode,
       errors,
     };
   });
@@ -130,11 +155,11 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
 
 function downloadTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Child Name', 'Age', 'Guardian Mobile', 'Guardian Email', 'Weekly Session Time', 'Roll No'],
-    ['Arjun Kumar', '10', '9876543210', 'parent@example.com', '20', 'ARJ101'],
-    ['Priya Sharma', '11', '9123456789', 'sharma@example.com', '25', 'PRI202'],
+    ['Child Name', 'Age', 'Guardian Mobile', 'Guardian Email', 'Weekly Session Time', 'Roll No', 'Country Code'],
+    ['Arjun Kumar', '10', '9876543210', 'parent@example.com', '20', 'ARJ101', '+91'],
+    ['Priya Sharma', '11', '9123456789', 'sharma@example.com', '25', 'PRI202', '+91'],
   ]);
-  ws['!cols'] = [{ wch: 22 }, { wch: 8 }, { wch: 18 }, { wch: 25 }, { wch: 20 }, { wch: 12 }];
+  ws['!cols'] = [{ wch: 22 }, { wch: 8 }, { wch: 18 }, { wch: 25 }, { wch: 20 }, { wch: 12 }, { wch: 15 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Students Template');
   XLSX.writeFile(wb, 'student_bulk_upload_template.xlsx');
@@ -204,6 +229,7 @@ export default function UsersSection({
       grade: user.grade ?? '',
       schoolId: user.schoolId ?? '',
       rollNo: user.rollNo ?? '',
+      countryCode: user.countryCode ?? '+91',
     });
     setErrors({});
     setView('edit');
@@ -256,6 +282,7 @@ export default function UsersSection({
       grade: form.usageMode === 'school' ? form.grade : undefined,
       schoolId: form.usageMode === 'school' ? form.schoolId : undefined,
       rollNo: form.rollNo.trim() || undefined,
+      countryCode: form.countryCode,
     };
     if (editingId) {
       setUsers((prev) => prev.map((u) => (u.id === editingId ? payload : u)));
@@ -324,6 +351,7 @@ export default function UsersSection({
       grade: bulkGrade,
       schoolId: bulkSchoolId,
       rollNo: r.rollNo,
+      countryCode: r.countryCode,
     }));
 
     setUsers((prev) => [...prev, ...newUsers]);
@@ -448,7 +476,7 @@ export default function UsersSection({
                       >
                         <td className="px-5 py-3.5 font-semibold text-gray-800 whitespace-nowrap">{user.childName}</td>
                         <td className="px-5 py-3.5 text-gray-600">{user.age} yrs</td>
-                        <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">{user.guardianContact}</td>
+                        <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">{user.countryCode ? `${user.countryCode} ` : ''}{user.guardianContact}</td>
                         <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">{user.guardianEmail}</td>
                         <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">{user.weeklySession} min</td>
                         <td className="px-5 py-3.5">
@@ -624,14 +652,28 @@ export default function UsersSection({
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Guardian Contact Number <span className="text-red-400">*</span>
               </label>
-              <input
-                type="tel"
-                value={form.guardianContact}
-                onChange={(e) => setField('guardianContact', e.target.value)}
-                placeholder="10-digit mobile number"
-                maxLength={10}
-                className={inputClass(errors.guardianContact)}
-              />
+              <div className="flex gap-2">
+                <select
+                  value={form.countryCode}
+                  onChange={(e) => setField('countryCode', e.target.value)}
+                  className="border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none bg-white focus:border-teal-owl"
+                  style={{ width: '100px' }}
+                >
+                  {COUNTRY_CODES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  value={form.guardianContact}
+                  onChange={(e) => setField('guardianContact', e.target.value.replace(/\D/g, ''))}
+                  placeholder="10-digit mobile number"
+                  maxLength={10}
+                  className={`${inputClass(errors.guardianContact)} flex-1`}
+                />
+              </div>
               {errors.guardianContact && <p className="mt-1 text-xs text-red-500">{errors.guardianContact}</p>}
             </div>
 
@@ -858,7 +900,7 @@ export default function UsersSection({
                 ) : (
                   <div>
                     <div className="text-sm text-gray-600 font-medium">Click to upload spreadsheet (.xlsx)</div>
-                    <div className="text-xs text-gray-400 mt-1">Columns: Child Name, Age, Guardian Mobile, Guardian Email, Weekly Session Time, Roll No</div>
+                    <div className="text-xs text-gray-400 mt-1">Columns: Child Name, Age, Guardian Mobile, Guardian Email, Weekly Session Time, Roll No, Country Code</div>
                   </div>
                 )}
               </div>
@@ -895,6 +937,7 @@ export default function UsersSection({
                         <th className="p-2 font-semibold text-gray-600">Row</th>
                         <th className="p-2 font-semibold text-gray-600">Child Name</th>
                         <th className="p-2 font-semibold text-gray-600">Age</th>
+                        <th className="p-2 font-semibold text-gray-600">Country Code</th>
                         <th className="p-2 font-semibold text-gray-600">Mobile</th>
                         <th className="p-2 font-semibold text-gray-600">Session</th>
                         <th className="p-2 font-semibold text-gray-600">Roll No</th>
@@ -907,6 +950,7 @@ export default function UsersSection({
                           <td className="p-2 text-gray-400">{r.rowNum}</td>
                           <td className="p-2 font-medium text-gray-800">{r.childName || '—'}</td>
                           <td className="p-2 text-gray-600">{r.age || '—'}</td>
+                          <td className="p-2 text-gray-600">{r.countryCode || '—'}</td>
                           <td className="p-2 text-gray-600">{r.guardianMobile || '—'}</td>
                           <td className="p-2 text-gray-600">{r.sessionTime ? r.sessionTime + ' min' : '—'}</td>
                           <td className="p-2 text-gray-800 font-mono font-semibold">{r.rollNo || '—'}</td>

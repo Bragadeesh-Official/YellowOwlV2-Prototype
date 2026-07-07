@@ -18,6 +18,7 @@ export interface School {
   pincode?: string;
   contactEmail?: string;
   contactPhone?: string;
+  countryCode?: string;
   numberOfGrades?: number;
   gradeNames?: string[];
 }
@@ -33,6 +34,7 @@ export interface AdminUser {
   grade?: string;
   schoolId?: string;
   rollNo?: string;
+  countryCode?: string;
 }
 
 export const MOCK_SCHOOLS: School[] = [
@@ -49,6 +51,8 @@ export const MOCK_SCHOOLS: School[] = [
     pincode: '600040',
     numberOfGrades: 5,
     gradeNames: ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7'],
+    contactPhone: '9876543210',
+    countryCode: '+91',
   },
   {
     id: 's2',
@@ -63,6 +67,8 @@ export const MOCK_SCHOOLS: School[] = [
     pincode: '600017',
     numberOfGrades: 5,
     gradeNames: ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7'],
+    contactPhone: '9123456789',
+    countryCode: '+91',
   },
   {
     id: 's3',
@@ -77,6 +83,8 @@ export const MOCK_SCHOOLS: School[] = [
     pincode: '600042',
     numberOfGrades: 5,
     gradeNames: ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7'],
+    contactPhone: '9988776655',
+    countryCode: '+91',
   },
 ];
 
@@ -92,6 +100,7 @@ export const MOCK_ADMIN_USERS: AdminUser[] = [
     grade: 'Grade 3',
     schoolId: 's1',
     rollNo: 'ARJ101',
+    countryCode: '+91',
   },
   {
     id: 'u2',
@@ -102,6 +111,7 @@ export const MOCK_ADMIN_USERS: AdminUser[] = [
     weeklySession: 30,
     usageMode: 'general',
     rollNo: 'PRI202',
+    countryCode: '+91',
   },
   {
     id: 'u3',
@@ -114,5 +124,6 @@ export const MOCK_ADMIN_USERS: AdminUser[] = [
     grade: 'Grade 4',
     schoolId: 's2',
     rollNo: 'ADI303',
+    countryCode: '+91',
   },
 ];

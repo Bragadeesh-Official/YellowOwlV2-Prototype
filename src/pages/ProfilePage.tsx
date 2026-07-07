@@ -256,7 +256,7 @@ export default function ProfilePage() {
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                 placeholder="Phone number"
                 className="w-full rounded-xl px-3 py-2 text-base outline-none"
                 style={{

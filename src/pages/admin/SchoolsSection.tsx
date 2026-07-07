@@ -18,6 +18,7 @@ interface SchoolForm {
   pincode: string;
   contactEmail: string;
   contactPhone: string;
+  countryCode: string;
   numberOfGrades: string;
   gradeNames: string[];
 }
@@ -33,10 +34,20 @@ const EMPTY_FORM: SchoolForm = {
   pincode: '',
   contactEmail: '',
   contactPhone: '',
+  countryCode: '+91',
   numberOfGrades: '',
   gradeNames: [],
 };
 const CREATE_STEPS = ['Tenant Details', 'Grades Setup', 'Review'];
+
+const COUNTRY_CODES = [
+  { code: '+91', label: '🇮🇳 +91' },
+  { code: '+1', label: '🇺🇸 +1' },
+  { code: '+44', label: '🇬🇧 +44' },
+  { code: '+971', label: '🇦🇪 +971' },
+  { code: '+65', label: '🇸🇬 +65' },
+  { code: '+61', label: '🇦🇺 +61' },
+];
 
 const GRADES = ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7'];
 const AGES = [9, 10, 11, 12, 13];
@@ -53,6 +64,10 @@ const getTenantGrades = (tenant: School | null): string[] => {
   }
   return GRADES;
 };
+
+function validateRollNo(rollNo: string) {
+  return /^[A-Z]{3}\d{3}$/.test(rollNo.trim());
+}
 
 function genId(prefix: 's' | 'u') {
   return prefix + Math.random().toString(36).slice(2, 9);
@@ -147,11 +162,11 @@ function FieldRow({ label, value }: { label: string; value: string }) {
 
 function downloadTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Name', 'Guardian Mobile', 'Guardian Email'],
-    ['Arjun Kumar', '9876543210', 'parent@example.com'],
-    ['Priya Sharma', '9123456789', 'sharma@example.com'],
+    ['Name', 'Guardian Mobile', 'Guardian Email', 'Roll No', 'Country Code'],
+    ['Arjun Kumar', '9876543210', 'parent@example.com', 'ARJ101', '+91'],
+    ['Priya Sharma', '9123456789', 'sharma@example.com', 'PRI202', '+91'],
   ]);
-  ws['!cols'] = [{ wch: 22 }, { wch: 18 }, { wch: 25 }];
+  ws['!cols'] = [{ wch: 22 }, { wch: 18 }, { wch: 25 }, { wch: 12 }, { wch: 15 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Students');
   XLSX.writeFile(wb, 'student_bulk_upload_template.xlsx');
@@ -355,8 +370,25 @@ function SchoolFormFields({ form, errors, onChange, hideGrades, showGradesOnly }
         </div>
         <div style={{ flex: 1 }}>
           <label style={lbl}>School Contact Phone</label>
-          <input type="text" value={form.contactPhone} placeholder="e.g. 9876543210"
-            onChange={e => onChange('contactPhone', e.target.value)} style={iStyle(errors.contactPhone)} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <select
+              value={form.countryCode}
+              onChange={e => onChange('countryCode', e.target.value)}
+              style={{
+                ...iStyle(),
+                width: 100,
+                background: 'white',
+              }}
+            >
+              {COUNTRY_CODES.map(c => (
+                <option key={c.code} value={c.code}>
+                  {c.code}
+                </option>
+              ))}
+            </select>
+            <input type="text" value={form.contactPhone} placeholder="e.g. 9876543210" maxLength={10}
+              onChange={e => onChange('contactPhone', e.target.value.replace(/\D/g, ''))} style={{ ...iStyle(errors.contactPhone), flex: 1 }} />
+          </div>
           {errors.contactPhone && <p style={errTxt}>{errors.contactPhone}</p>}
         </div>
       </div>
@@ -400,7 +432,9 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
     age: '9',
     guardianContact: '',
     guardianEmail: '',
-    weeklySession: '20'
+    weeklySession: '20',
+    rollNo: '',
+    countryCode: '+91'
   });
   const [studentErrors, setStudentErrors] = useState<Record<string, string>>({});
 
@@ -408,7 +442,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
   const [bulkGrade, setBulkGrade] = useState<string>('');
   const [bulkSession, setBulkSession] = useState<string>('20');
   const [fileName, setFileName] = useState('');
-  const [bulkRows, setBulkRows] = useState<{ childName: string; guardianMobile: string; guardianEmail?: string; errors: string[] }[]>([]);
+  const [bulkRows, setBulkRows] = useState<{ childName: string; guardianMobile: string; guardianEmail?: string; rollNo: string; countryCode: string; errors: string[] }[]>([]);
   const [bulkError, setBulkError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -459,13 +493,32 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
           const childName = pick('Name', 'Child Name', 'Student Name', 'Full Name');
           const guardianMobile = pick('Guardian Mobile', 'Mobile', 'Contact', 'Guardian Contact', 'Phone');
           const guardianEmail = pick('Guardian Email', 'Email');
+          const rollNo = pick('Roll No', 'Roll Number', 'RollNo', 'Roll_No').toUpperCase();
+          let countryCode = pick('Country Code', 'CountryCode', 'Code').trim();
+          if (countryCode) {
+            if (!countryCode.startsWith('+')) {
+              countryCode = '+' + countryCode;
+            }
+          } else {
+            countryCode = '+91';
+          }
 
           const errors: string[] = [];
           if (!childName) errors.push('Name is missing');
           if (!guardianMobile) errors.push('Mobile number is missing');
           else if (!/^\d{10}$/.test(guardianMobile)) errors.push('Mobile must be exactly 10 digits');
 
-          return { childName, guardianMobile, guardianEmail, errors };
+          if (!rollNo) {
+            errors.push('Roll No is missing');
+          } else if (!validateRollNo(rollNo)) {
+            errors.push('Roll No must be 3 letters + 3 digits (e.g. ABC123)');
+          }
+
+          if (!/^\+\d{1,4}$/.test(countryCode)) {
+            errors.push('Invalid country code (e.g. +91)');
+          }
+
+          return { childName, guardianMobile, guardianEmail, rollNo, countryCode, errors };
         });
 
         setBulkRows(parsed);
@@ -579,6 +632,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                                 pincode: s.pincode || '600040',
                                 contactEmail: s.contactEmail ?? '',
                                 contactPhone: s.contactPhone ?? '',
+                                countryCode: s.countryCode ?? '+91',
                                 numberOfGrades: s.numberOfGrades != null ? String(s.numberOfGrades) : '',
                                 gradeNames: s.gradeNames || Array.from({ length: s.numberOfGrades || 0 }, (_, idx) => `Grade ${idx + 3}`),
                               });
@@ -733,6 +787,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
         pincode: form.pincode,
         contactEmail: form.contactEmail || undefined,
         contactPhone: form.contactPhone || undefined,
+        countryCode: form.countryCode || undefined,
         numberOfGrades: form.numberOfGrades ? Number(form.numberOfGrades) : undefined,
         gradeNames: form.gradeNames.map((name, i) => name || `Grade ${i + 3}`),
       };
@@ -775,7 +830,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                 <FieldRow label="State" value={form.state} />
                 <FieldRow label="Pincode" value={form.pincode} />
                 {form.contactEmail && <FieldRow label="Contact Email" value={form.contactEmail} />}
-                {form.contactPhone && <FieldRow label="Contact Phone" value={form.contactPhone} />}
+                {form.contactPhone && <FieldRow label="Contact Phone" value={`${form.countryCode || '+91'} ${form.contactPhone}`} />}
                 {form.numberOfGrades && <FieldRow label="Number of Grades" value={form.numberOfGrades} />}
                 {form.gradeNames && form.gradeNames.length > 0 && (
                   <FieldRow label="Grade Names" value={form.gradeNames.filter(Boolean).join(', ')} />
@@ -837,6 +892,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
         pincode: editForm.pincode,
         contactEmail: editForm.contactEmail || undefined,
         contactPhone: editForm.contactPhone || undefined,
+        countryCode: editForm.countryCode || undefined,
         numberOfGrades: editForm.numberOfGrades ? Number(editForm.numberOfGrades) : undefined,
         gradeNames: editForm.gradeNames.map((name, i) => name || `Grade ${i + 3}`),
       } : s));
@@ -877,7 +933,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                 <FieldRow label="State" value={editForm.state} />
                 <FieldRow label="Pincode" value={editForm.pincode} />
                 {editForm.contactEmail && <FieldRow label="Contact Email" value={editForm.contactEmail} />}
-                {editForm.contactPhone && <FieldRow label="Contact Phone" value={editForm.contactPhone} />}
+                {editForm.contactPhone && <FieldRow label="Contact Phone" value={`${editForm.countryCode || '+91'} ${editForm.contactPhone}`} />}
                 {editForm.numberOfGrades && <FieldRow label="Number of Grades" value={editForm.numberOfGrades} />}
                 {editForm.gradeNames && editForm.gradeNames.length > 0 && (
                   <FieldRow label="Grade Names" value={editForm.gradeNames.filter(Boolean).join(', ')} />
@@ -925,6 +981,52 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
               📍 {selectedTenant.branch} Branch | {selectedTenant.address}
             </p>
           </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button
+              onClick={() => {
+                setBulkGrade('');
+                setBulkRows([]);
+                setFileName('');
+                setBulkError('');
+                setView('bulk-upload');
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                color: '#475569', background: 'white', border: '2px solid #e2e8f0',
+                cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif',
+                transition: 'all 0.2s',
+              }}
+            >
+              📥 Bulk Upload
+            </button>
+            <button
+              onClick={() => {
+                setStudentGrade('');
+                setStudentForm({
+                  childName: '',
+                  age: '9',
+                  guardianContact: '',
+                  guardianEmail: '',
+                  weeklySession: '20',
+                  rollNo: '',
+                  countryCode: '+91',
+                });
+                setStudentErrors({});
+                setView('add-student');
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                color: '#1a1a1a', background: '#FFEA11', border: 'none',
+                cursor: 'pointer', fontFamily: 'Andika, system-ui, sans-serif',
+                boxShadow: '0 4px 12px rgba(255, 234, 17, 0.35)',
+                transition: 'all 0.2s',
+              }}
+            >
+              + Add Student
+            </button>
+          </div>
         </div>
 
         {/* Grades Tabs */}
@@ -964,7 +1066,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #f1f5f9' }}>
-                  {['Student Name', 'Grade', 'Age', 'Session duration', 'Guardian Email', 'Guardian Contact'].map(h => (
+                  {['Student Name', 'Grade', 'Roll No', 'Age', 'Session duration', 'Guardian Email', 'Guardian Contact'].map(h => (
                     <th key={h} style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -972,7 +1074,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
               <tbody>
                 {activeGradeUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>
                       No users found in this grade category.
                     </td>
                   </tr>
@@ -984,10 +1086,11 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                         {u.grade || 'Unassigned'}
                       </span>
                     </td>
+                    <td style={{ padding: '14px 16px', color: '#1e293b', fontWeight: 600, fontFamily: 'monospace' }}>{u.rollNo || '—'}</td>
                     <td style={{ padding: '14px 16px', color: '#475569' }}>{u.age} yrs</td>
                     <td style={{ padding: '14px 16px', color: '#475569' }}>{u.weeklySession} mins</td>
                     <td style={{ padding: '14px 16px', color: '#64748b' }}>{u.guardianEmail || '—'}</td>
-                    <td style={{ padding: '14px 16px', color: '#475569' }}>{u.guardianContact}</td>
+                    <td style={{ padding: '14px 16px', color: '#475569' }}>{u.countryCode ? `${u.countryCode} ` : ''}{u.guardianContact}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1007,6 +1110,11 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
       if (!studentForm.childName.trim()) errs.childName = 'Student name is required';
       if (!studentForm.guardianContact.trim()) errs.guardianContact = 'Guardian contact mobile is required';
       else if (!/^\d{10}$/.test(studentForm.guardianContact.trim())) errs.guardianContact = 'Please enter a valid 10-digit mobile number';
+      if (!studentForm.rollNo.trim()) {
+        errs.rollNo = 'Roll number is required';
+      } else if (!validateRollNo(studentForm.rollNo)) {
+        errs.rollNo = 'Roll number must be 3 letters + 3 digits (e.g. ABC123)';
+      }
 
       if (Object.keys(errs).length > 0) {
         setStudentErrors(errs);
@@ -1023,7 +1131,9 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
         weeklySession: parseInt(studentForm.weeklySession),
         usageMode: 'school',
         grade: studentGrade,
-        schoolId: selectedTenant.id
+        schoolId: selectedTenant.id,
+        rollNo: studentForm.rollNo.trim().toUpperCase(),
+        countryCode: studentForm.countryCode,
       };
 
       setUsers(prev => [...prev, newUser]);
@@ -1125,18 +1235,52 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
               </div>
 
               <div>
-                <label style={lbl}>Guardian Contact Mobile (10 digits) <span style={{ color: '#ef4444' }}>*</span></label>
+                <label style={lbl}>Roll Number <span style={{ color: '#ef4444' }}>*</span></label>
                 <input
                   type="text"
-                  placeholder="e.g. 9876543210"
-                  value={studentForm.guardianContact}
+                  placeholder="e.g. ABC123"
+                  value={studentForm.rollNo}
+                  maxLength={6}
                   onChange={e => {
-                    const val = e.target.value;
-                    setStudentForm(prev => ({ ...prev, guardianContact: val }));
-                    setStudentErrors(prev => ({ ...prev, guardianContact: '' }));
+                    const val = e.target.value.toUpperCase();
+                    setStudentForm(prev => ({ ...prev, rollNo: val }));
+                    setStudentErrors(prev => ({ ...prev, rollNo: '' }));
                   }}
-                  style={iStyle(studentErrors.guardianContact)}
+                  style={iStyle(studentErrors.rollNo)}
                 />
+                {studentErrors.rollNo && <p style={errTxt}>{studentErrors.rollNo}</p>}
+              </div>
+
+              <div>
+                <label style={lbl}>Guardian Contact Mobile (10 digits) <span style={{ color: '#ef4444' }}>*</span></label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <select
+                    value={studentForm.countryCode}
+                    onChange={e => setStudentForm(prev => ({ ...prev, countryCode: e.target.value }))}
+                    style={{
+                      ...iStyle(),
+                      width: 100,
+                      background: 'white',
+                    }}
+                  >
+                    {COUNTRY_CODES.map(c => (
+                      <option key={c.code} value={c.code}>
+                        {c.code}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    placeholder="e.g. 9876543210"
+                    value={studentForm.guardianContact}
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setStudentForm(prev => ({ ...prev, guardianContact: val }));
+                      setStudentErrors(prev => ({ ...prev, guardianContact: '' }));
+                    }}
+                    style={{ ...iStyle(studentErrors.guardianContact), flex: 1 }}
+                  />
+                </div>
                 {studentErrors.guardianContact && <p style={errTxt}>{studentErrors.guardianContact}</p>}
               </div>
 
@@ -1198,7 +1342,8 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
         weeklySession: parseInt(bulkSession),
         usageMode: 'school',
         grade: bulkGrade,
-        schoolId: selectedTenant.id
+        schoolId: selectedTenant.id,
+        rollNo: r.rollNo,
       }));
 
       setUsers(prev => [...prev, ...newUsers]);
@@ -1351,6 +1496,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                           <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Name</th>
                           <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Guardian Mobile</th>
                           <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Guardian Email</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Roll No</th>
                           <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Status</th>
                         </tr>
                       </thead>
@@ -1360,6 +1506,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                             <td style={{ padding: '8px 12px', color: '#1e293b', fontWeight: 600 }}>{r.childName || '—'}</td>
                             <td style={{ padding: '8px 12px', color: '#475569' }}>{r.guardianMobile || '—'}</td>
                             <td style={{ padding: '8px 12px', color: '#64748b' }}>{r.guardianEmail || '—'}</td>
+                            <td style={{ padding: '8px 12px', color: '#1e293b', fontWeight: 600, fontFamily: 'monospace' }}>{r.rollNo || '—'}</td>
                             <td style={{ padding: '8px 12px' }}>
                               {r.errors.length > 0 ? (
                                 <span style={{ color: '#ef4444', fontWeight: 700 }}>⚠️ {r.errors.join(', ')}</span>
