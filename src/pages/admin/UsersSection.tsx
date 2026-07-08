@@ -375,14 +375,27 @@ export default function UsersSection({
 
         {/* Toolbar */}
         <div className="flex flex-col sm:flex-row gap-3 mb-5">
-          <div className="relative flex-1">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-base">🔍</span>
+          <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
             <input
               type="text"
               placeholder="Search by name, email or contact..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm outline-none focus:border-teal-owl transition-all"
+              style={{
+                width: '100%',
+                padding: '11px 14px',
+                border: '1.5px solid #e2e8f0',
+                borderRadius: 12,
+                fontSize: 13,
+                fontFamily: 'Andika, system-ui, sans-serif',
+                color: '#1e293b',
+                outline: 'none',
+                background: 'white',
+                boxSizing: 'border-box',
+                transition: 'border-color 0.2s',
+              }}
+              onFocus={e => e.currentTarget.style.borderColor = '#2AD5B4'}
+              onBlur={e => e.currentTarget.style.borderColor = '#e2e8f0'}
             />
           </div>
           <select

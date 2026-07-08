@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { SESSION_KEY, PROFILE_KEY, MOCK_CHILD_PROFILE } from '@/mock/userData';
 
 interface ChildProfile {
@@ -12,6 +12,7 @@ interface ChildProfile {
   interests: string[];
   weeklySession: number;
   guardianPhone: string;
+  guardianEmail?: string;
   passwordEnv: string;
   passwordAnimal: string;
   joinedDate: string;
@@ -36,27 +37,28 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isRegistered, setIsRegistered] = useState(false);
-  const [profile, setProfile] = useState<ChildProfile | null>(null);
-  const [assessmentProgress, setAssessmentProgress] = useState<Record<string, unknown>>({});
-
-  useEffect(() => {
-    const session = localStorage.getItem(SESSION_KEY);
-    const savedProfile = localStorage.getItem(PROFILE_KEY);
-    if (session === 'active' && savedProfile) {
-      setIsLoggedIn(true);
-      setIsRegistered(true);
-      setProfile(JSON.parse(savedProfile));
-    } else if (savedProfile) {
-      setIsRegistered(true);
-      setProfile(JSON.parse(savedProfile));
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    return localStorage.getItem(SESSION_KEY) === 'active';
+  });
+  const [isRegistered, setIsRegistered] = useState<boolean>(() => {
+    return !!localStorage.getItem(PROFILE_KEY);
+  });
+  const [profile, setProfile] = useState<ChildProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem(PROFILE_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
     }
-    const savedProgress = localStorage.getItem('yellowowl_assessment_progress');
-    if (savedProgress) {
-      setAssessmentProgress(JSON.parse(savedProgress));
+  });
+  const [assessmentProgress, setAssessmentProgress] = useState<Record<string, unknown>>(() => {
+    try {
+      const saved = localStorage.getItem('yellowowl_assessment_progress');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
     }
-  }, []);
+  });
 
   const login = () => {
     localStorage.setItem(SESSION_KEY, 'active');

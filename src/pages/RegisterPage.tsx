@@ -35,8 +35,10 @@ export default function RegisterPage() {
   const [age, setAge] = useState('9');
   const [weeklySession, setWeeklySession] = useState('20 minutes');
   const [guardianPhone, setGuardianPhone] = useState('');
+  const [guardianEmail, setGuardianEmail] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [phoneError, setPhoneError] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   // Derive active step for the progress indicator (1-indexed)
   const activeStep = (() => {
@@ -129,11 +131,18 @@ export default function RegisterPage() {
     }
     setPhoneError('');
 
+    if (guardianEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guardianEmail)) {
+      setEmailError('Please enter a valid email address.');
+      return;
+    }
+    setEmailError('');
+
     register({
       name: name.trim(),
       age: parseInt(age, 10),
       weeklySession: parseInt(weeklySession, 10),
       guardianPhone,
+      guardianEmail: guardianEmail.trim() || undefined,
     });
 
     localStorage.setItem('yellowowl_newly_registered', 'true');
@@ -171,7 +180,7 @@ export default function RegisterPage() {
       {/* Card */}
       <div
         ref={cardRef}
-        className="relative z-10 bg-white rounded-3xl shadow-lg p-8 mx-4 w-full max-w-lg"
+        className="relative z-10 bg-white rounded-3xl shadow-lg px-12 py-8 mx-4 w-full max-w-2xl"
       >
         {/* Back link */}
         <button
@@ -182,43 +191,12 @@ export default function RegisterPage() {
           ← Back to Login
         </button>
 
-        {/* Progress Steps */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          {STEPS.map((label, i) => {
-            const stepNum = i + 1;
-            const isCompleted = stepNum < activeStep;
-            const isCurrent = stepNum === activeStep;
-            return (
-              <div key={label} className="flex items-center gap-1">
-                <div className="flex flex-col items-center">
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300"
-                    style={{
-                      backgroundColor: isCompleted ? '#2AD5B4' : isCurrent ? '#FFEA11' : '#e5e7eb',
-                      color: isCompleted ? '#fff' : isCurrent ? '#1a1a1a' : '#9ca3af',
-                    }}
-                  >
-                    {isCompleted ? '✓' : stepNum}
-                  </div>
-                  <span className="text-xs mt-1" style={{ color: isCurrent ? '#2AD5B4' : '#9ca3af' }}>
-                    {label}
-                  </span>
-                </div>
-                {i < STEPS.length - 1 && (
-                  <div
-                    className="w-8 h-0.5 mb-4 transition-all duration-300"
-                    style={{ backgroundColor: isCompleted ? '#2AD5B4' : '#e5e7eb' }}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
+
 
         {/* Header */}
         <div className="flex flex-col items-center mb-7">
           <div ref={owlRef} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <img src={logo} alt="Yellow Owl Logo" style={{ height: 80, objectFit: 'contain', marginBottom: 12 }} />
+            <img src={logo} alt="Yellow Owl Logo" style={{ height: 140, objectFit: 'contain', marginBottom: 12 }} />
           </div>
           <h1 className="text-2xl font-bold text-gray-800 mb-1">Join Yellow Owl!</h1>
           <p className="text-gray-500 text-sm text-center">Tell us about yourself!</p>
@@ -333,9 +311,40 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* 5. Terms checkbox */}
+          {/* 5. Guardian Email */}
+          <div ref={(el) => addFieldRef(el, 4)}>
+            <label className="block text-sm font-bold text-gray-700 mb-1">
+              Guardian Email <span className="text-gray-400 text-xs font-normal"></span>
+            </label>
+            <input
+              type="email"
+              value={guardianEmail}
+              onChange={(e) => {
+                setGuardianEmail(e.target.value);
+                setEmailError('');
+              }}
+              placeholder="guardian@example.com"
+              style={{
+                ...inputStyle,
+                borderColor: emailError ? '#ef4444' : '#2AD5B4',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#FFEA11';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,234,17,0.25)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = emailError ? '#ef4444' : '#2AD5B4';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            />
+            {emailError && (
+              <p className="mt-1 text-red-500 text-xs font-semibold">{emailError}</p>
+            )}
+          </div>
+
+          {/* 6. Terms checkbox */}
           <div
-            ref={(el) => addFieldRef(el, 4)}
+            ref={(el) => addFieldRef(el, 5)}
             className="flex items-start gap-3 p-3 rounded-xl"
             style={{ backgroundColor: '#f0fdf9', border: '1.5px solid #2AD5B4' }}
           >
@@ -359,7 +368,7 @@ export default function RegisterPage() {
           </div>
 
           {/* Submit */}
-          <div ref={(el) => addFieldRef(el, 5)}>
+          <div ref={(el) => addFieldRef(el, 6)}>
             <button
               type="submit"
               className="btn-primary w-full"

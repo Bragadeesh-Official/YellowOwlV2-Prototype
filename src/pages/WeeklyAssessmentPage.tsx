@@ -26,6 +26,16 @@ interface ChallengeAnswer {
 
 type AnswersMap = Record<number, ChallengeAnswer>;
 
+const BUBBLES = [
+  { size: 150, top: '5%', left: '5%', bg: '#2AD5B4' },
+  { size: 100, top: '15%', left: '80%', bg: '#FFEA11' },
+  { size: 125, top: '28%', left: '42%', bg: '#2AD5B4' },
+  { size: 180, top: '42%', left: '10%', bg: '#FFEA11' },
+  { size: 130, top: '55%', left: '75%', bg: '#FFEA11' },
+  { size: 95, top: '68%', left: '32%', bg: '#2AD5B4' },
+  { size: 140, top: '80%', left: '60%', bg: '#2AD5B4' },
+  { size: 110, top: '92%', left: '15%', bg: '#FFEA11' },
+];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -172,6 +182,7 @@ export default function WeeklyAssessmentPage() {
   const explanationRefs = useRef<(HTMLDivElement | null)[]>([]);
   const optionRefs = useRef<(HTMLButtonElement | null)[][]>([]);
   const confettiRef = useRef<HTMLDivElement>(null);
+  const bubblesRef = useRef<HTMLDivElement[]>([]);
 
   const timerPausedRef = useRef(timerPaused);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -279,6 +290,25 @@ export default function WeeklyAssessmentPage() {
       navigate('/dashboard');
     }
   }, [showIdlePopup, idleCountdown, currentChallengeIndex, answers, timeLeft, saveAssessmentProgress, navigate]);
+
+  // ── GSAP Background Bubbles Animation ──
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      bubblesRef.current.forEach((bubble, i) => {
+        if (!bubble) return;
+        gsap.to(bubble, {
+          y: -30 - i * 8,
+          x: (i % 2 === 0 ? 15 : -15),
+          duration: 3 + i * 0.5,
+          ease: 'sine.inOut',
+          yoyo: true,
+          repeat: -1,
+          delay: i * 0.4,
+        });
+      });
+    });
+    return () => ctx.revert();
+  }, [showChallengeIntro, showFeedbackPage, isComplete]);
 
   // ── Completion / confetti ──
   const handleComplete = useCallback(
@@ -486,8 +516,8 @@ export default function WeeklyAssessmentPage() {
     navigate('/dashboard');
   };
 
-  const handleRestartQuest = () => {
-    if (window.confirm("Are you sure you want to restart this weekly assessment quest from the beginning? This will clear your current answers.")) {
+  const handleRestartChallenge = () => {
+    if (window.confirm("Are you sure you want to restart this weekly assessment challenge from the beginning? This will clear your current answers.")) {
       localStorage.removeItem('yellowowl_assessment_progress');
       const initialAnswers = buildInitialAnswers();
       saveAssessmentProgress({
@@ -507,234 +537,6 @@ export default function WeeklyAssessmentPage() {
       setShowFeedbackPage(false);
     }
   };
-
-  // ── Completion screen ──
-  if (isComplete) {
-    return (
-      <div
-        ref={confettiRef}
-        className="relative min-h-screen gradient-bg flex flex-col items-center justify-center p-4 overflow-hidden"
-      >
-        <div className="owl-card max-w-lg w-full mx-auto p-8 text-center relative z-10">
-          <div className="text-5xl mb-4 pop-in">🎉</div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Weekly Challenge Complete!</h1>
-          <p className="text-xl text-teal-600 font-bold mb-6">You're a superstar! 🌟</p>
-
-          <div className="flex justify-center mb-8">
-            <div className="bg-yellow-50 rounded-2xl p-4 w-40 text-center border-2 border-yellow-100">
-              <div className="text-2xl mb-1">🏆</div>
-              <div className="text-2xl font-bold text-yellow-600">5/5</div>
-              <div className="text-sm text-gray-500 mt-1">Challenges done</div>
-            </div>
-          </div>
-
-          <p className="text-gray-500 text-sm mb-6">
-            You successfully tackled all 5 challenges — that's incredible effort!
-          </p>
-
-          <button className="btn-primary w-full text-lg" onClick={() => navigate('/dashboard')}>
-            Back to My Den ➔
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Feedback screen ──
-  if (showFeedbackPage) {
-    const mcqs = getMCQQuestions(currentChallenge);
-    const mcqAnswers = currentAnswer.mcq;
-    let mcqScore = 0;
-    mcqs.forEach((q, idx) => {
-      if (mcqAnswers[idx] === q.correct) {
-        mcqScore++;
-      }
-    });
-
-    const twistQuestion = currentChallenge.twistQuestion;
-    const twistAnswer = currentAnswer.twist;
-    let twistCorrect = false;
-    if (twistQuestion && twistAnswer !== null) {
-      twistCorrect = twistAnswer === twistQuestion.correct;
-    }
-
-    const totalMcqs = mcqs.length;
-    const hasMcqs = totalMcqs > 0;
-    const hasTwist = !!twistQuestion;
-    const hasDescriptive = !!getDescriptiveQuestion(currentChallenge);
-    const isIdeas = !hasMcqs && !hasDescriptive;
-    const isLastChallenge = currentChallengeIndex === WEEKLY_ASSESSMENT.length - 1;
-
-    // determine overall celebration emoji
-    const isAllCorrect = (!hasMcqs || mcqScore === totalMcqs) && (!hasTwist || twistCorrect);
-
-    return (
-      <div className="min-h-screen gradient-bg flex flex-col">
-        {/* Top bar */}
-        <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto w-full">
-          <div className="flex items-center gap-2">
-            <img src={logo} alt="Logo" style={{ height: 40, objectFit: 'contain' }} />
-            <h1 className="font-black text-gray-800 text-base">Challenge Feedback 📝</h1>
-          </div>
-          <div className={`font-bold text-sm ${timeLeft < 120 ? 'timer-critical' : 'text-gray-700'}`}>
-            ⏱️ {formatTime(timeLeft)}
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 px-4 pb-8 max-w-2xl mx-auto w-full">
-          <div className="owl-card p-6 border-2 border-teal-300 shadow-xl bg-white" style={{ borderRadius: 24 }}>
-            {/* Header */}
-            <div className="text-center mb-6">
-              <span className="text-5xl inline-block transform animate-bounce">
-                {isIdeas ? '💡' : isAllCorrect ? '🌟' : '👍'}
-              </span>
-              <h2 className="text-2xl font-black text-gray-800 mt-3">
-                {isIdeas ? 'Great Brainstorming!' : isAllCorrect ? 'Superb Work! 🤩' : 'Good Try! Keep Growing!'}
-              </h2>
-              <p className="text-sm font-bold text-gray-500 mt-1">
-                Here's your challenge feedback for <span className="text-teal-600 font-black">{currentChallenge.title}</span>
-              </p>
-            </div>
-
-            {/* MCQ Results */}
-            {hasMcqs && (
-              <div className="space-y-4 mb-6">
-                <div className="bg-teal-50/80 border border-teal-100 rounded-2xl p-4 flex items-center justify-between">
-                  <span className="font-extrabold text-teal-800 text-sm">MCQ Questions:</span>
-                  <span className="bg-teal-600 text-white font-black text-xs px-3 py-1 rounded-full">
-                    {mcqScore} / {totalMcqs} Correct
-                  </span>
-                </div>
-
-                <div className="space-y-3">
-                  {mcqs.map((q, qi) => {
-                    const isCorrect = mcqAnswers[qi] === q.correct;
-                    return (
-                      <div key={qi} className="p-4 rounded-xl border border-gray-100 bg-gray-50/50">
-                        <p className="font-bold text-xs text-gray-400 uppercase tracking-wider mb-1">Question {qi + 1}</p>
-                        <p className="font-extrabold text-gray-800 text-sm mb-2">{q.question}</p>
-                        <div className="flex flex-col gap-1.5 text-xs">
-                          <p>
-                            <span className="font-bold text-gray-500">Your Answer: </span>
-                            <span className={isCorrect ? 'text-green-600 font-extrabold' : 'text-red-500 font-extrabold'}>
-                              {mcqAnswers[qi] !== null ? q.options[mcqAnswers[qi]!] : 'Not Answered'}
-                              {isCorrect ? ' (Correct! ✅)' : ' (Incorrect ❌)'}
-                            </span>
-                          </p>
-                          {!isCorrect && (
-                            <p>
-                              <span className="font-bold text-gray-500">Correct Answer: </span>
-                              <span className="text-green-600 font-extrabold">{q.options[q.correct]}</span>
-                            </p>
-                          )}
-                          <div className="mt-2 p-2.5 rounded-lg bg-teal-50/70 border border-teal-100/50 text-teal-800 leading-relaxed font-medium">
-                            <span className="font-extrabold">Explanation: </span>{q.explanation}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Descriptive Answer Results */}
-            {hasDescriptive && (
-              <div className="mb-6 space-y-3">
-                <div className="bg-amber-50/80 border border-amber-100 rounded-2xl p-4">
-                  <span className="font-extrabold text-amber-800 text-sm">📝 Your Creative Response:</span>
-                  <p className="mt-2 text-gray-700 text-sm bg-white p-3 rounded-xl border border-amber-100 italic font-medium font-sans">
-                    "{currentAnswer.descriptive || 'No response provided'}"
-                  </p>
-                </div>
-                {getDescriptiveQuestion(currentChallenge)?.sampleAnswer && (
-                  <div className="p-4 rounded-2xl bg-teal-50/50 border border-teal-100 text-xs">
-                    <span className="font-black text-teal-800 block mb-1">💡 Sample Answer / Reflection Idea:</span>
-                    <p className="text-teal-700 leading-relaxed font-medium">
-                      {getDescriptiveQuestion(currentChallenge)?.sampleAnswer}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Twist Answer Results */}
-            {hasTwist && twistQuestion && twistAnswer !== null && (
-              <div className="mb-6 space-y-3">
-                <div className="bg-purple-50/80 border border-purple-100 rounded-2xl p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-purple-800 text-sm">🌀 Surprise Twist Result:</span>
-                    <span className={`font-black text-xs px-2.5 py-1 rounded-full text-white ${twistCorrect ? 'bg-purple-600' : 'bg-gray-500'}`}>
-                      {twistCorrect ? 'Correct! 🎉' : 'Incorrect'}
-                    </span>
-                  </div>
-                  <p className="mt-3 font-extrabold text-gray-800 text-sm">{twistQuestion.question}</p>
-                  <p className="mt-1 text-xs">
-                    <span className="font-bold text-gray-500">Your Answer: </span>
-                    <span className={twistCorrect ? 'text-green-600 font-extrabold' : 'text-red-500 font-extrabold'}>
-                      {twistQuestion.options[twistAnswer]}
-                    </span>
-                  </p>
-                  {!twistCorrect && (
-                    <p className="text-xs">
-                      <span className="font-bold text-gray-500">Correct Answer: </span>
-                      <span className="text-green-600 font-extrabold">{twistQuestion.options[twistQuestion.correct]}</span>
-                    </p>
-                  )}
-                  <div className="mt-2.5 p-2.5 rounded-lg bg-purple-50/50 border border-purple-200/50 text-purple-900 text-xs leading-relaxed font-medium">
-                    <span className="font-extrabold">Explanation: </span>{twistQuestion.explanation}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Ideas List Results */}
-            {isIdeas && (
-              <div className="mb-6 space-y-4">
-                <div className="bg-violet-50/80 border border-violet-100 rounded-2xl p-4">
-                  <span className="font-extrabold text-violet-800 text-sm">💡 Your Brainstormed Ideas:</span>
-                  <div className="mt-3 space-y-2">
-                    {currentAnswer.ideas.filter(idea => idea.trim() !== '').map((idea, idx) => (
-                      <div key={idx} className="flex gap-2 text-sm text-gray-700 bg-white p-2.5 rounded-xl border border-violet-100 font-medium shadow-sm">
-                        <span className="font-black text-violet-600">{idx + 1}.</span>
-                        <span>{idea}</span>
-                      </div>
-                    ))}
-                    {currentAnswer.ideas.filter(idea => idea.trim() !== '').length === 0 && (
-                      <p className="text-gray-400 text-xs italic">No ideas entered.</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-teal-50 border border-teal-100 text-center">
-                  <p className="text-2xl mb-1">🌟</p>
-                  <p className="text-sm font-extrabold text-teal-800">Creativity Sparks Unlocked!</p>
-                  <p className="text-xs text-teal-600 mt-1">Thinking outside the box is a superpower. Well done!</p>
-                </div>
-              </div>
-            )}
-
-            {/* Next challenge button */}
-            <button
-              onClick={() => {
-                setShowFeedbackPage(false);
-                if (isLastChallenge) {
-                  handleComplete(true);
-                } else {
-                  goToNextChallenge();
-                }
-              }}
-              className="btn-primary w-full text-base py-3.5 mt-2"
-            >
-              {isLastChallenge ? 'Finish Quest & View Summary 🎉' : 'Proceed to Next Challenge ➔'}
-            </button>
-
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // ── Render helpers ──
   const renderMCQSection = () => {
@@ -892,166 +694,557 @@ export default function WeeklyAssessmentPage() {
   // After twist is answered show a special Continue
   const showTwistContinue = showTwist && showContinueAfterTwist;
 
-  if (showChallengeIntro && !isComplete) {
-    return (
-      <div
-        className="min-h-screen gradient-bg flex flex-col items-center justify-center p-4"
-        style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' }}
-      >
-        <div className="owl-card max-w-lg w-full mx-auto p-8 relative z-10 text-center animate-pop-in" style={{ borderRadius: 24, boxShadow: '0 8px 32px rgba(255, 234, 17, 0.15)', background: 'white' }}>
-          <span className="text-sm font-black text-[#B8A800] bg-[#fffbeb] px-3 py-1 rounded-full uppercase tracking-wider">
-            Challenge {currentChallengeIndex + 1} of {WEEKLY_ASSESSMENT.length}
-          </span>
-          
-          <div
-            className="w-24 h-24 rounded-full flex items-center justify-center text-5xl mx-auto mt-6 mb-4 shadow-sm"
-            style={{ backgroundColor: `${currentChallenge.color}20` }}
-          >
-            {currentChallenge.emoji}
-          </div>
+  // Render variables for feedback screen calculation
+  const mcqs = getMCQQuestions(currentChallenge);
+  const mcqAnswers = currentAnswer.mcq;
+  let mcqScore = 0;
+  mcqs.forEach((q, idx) => {
+    if (mcqAnswers[idx] === q.correct) {
+      mcqScore++;
+    }
+  });
 
-          <h2 className="text-3xl font-black text-gray-800 mb-1">
-            {currentChallenge.title}
-          </h2>
-          <p className="text-base font-extrabold text-gray-500 mb-4">
-            Theme: {currentChallenge.theme}
-          </p>
-
-          {/* Skill tags */}
-          {currentChallenge.skills && currentChallenge.skills.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-2 mb-6">
-              {currentChallenge.skills.map(skKey => {
-                const info = (SKILL_DESCRIPTIONS as any)[skKey];
-                if (!info) return null;
-                return (
-                  <span
-                    key={skKey}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black text-gray-700 shadow-sm border border-gray-200/50 hover:scale-105 transition-transform cursor-default"
-                    style={{ backgroundColor: `${info.color}35` }}
-                  >
-                    <span>{info.emoji}</span>
-                    <span>{info.label}</span>
-                  </span>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="bg-gray-50 rounded-2xl p-5 mb-8 text-left border border-gray-100">
-            <h4 className="font-extrabold text-sm text-gray-700 mb-2">What you'll do:</h4>
-            <p className="text-xs text-gray-600 font-semibold leading-relaxed">
-              {currentChallengeIndex === 0 ? 'Crack detective questions about plants, sunlight, and clean air!' :
-               currentChallengeIndex === 1 ? 'Explore story elements, character roles, and rewrite your own creative ending!' :
-               currentChallengeIndex === 2 ? 'Use your magic wand to imagine and design 5 major improvements for your school!' :
-               currentChallengeIndex === 3 ? 'Travel to the year 2050 and list your top futuristic inventions to help humanity!' :
-               'Look back on all your achievements, challenges, and thoughts during this quest!'}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <button
-              className="btn-primary w-full text-lg py-4 font-black"
-              onClick={handleStartChallenge}
-            >
-              Enter Challenge 🚀
-            </button>
-            
-            <button
-              className="font-bold text-sm text-gray-500 hover:text-yellow-600 transition-colors mt-2"
-              onClick={handleBackToDen}
-              style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              ← Back to Den
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+  const twistQuestion = currentChallenge.twistQuestion;
+  const twistAnswer = currentAnswer.twist;
+  let twistCorrect = false;
+  if (twistQuestion && twistAnswer !== null) {
+    twistCorrect = twistAnswer === twistQuestion.correct;
   }
 
+  const totalMcqs = mcqs.length;
+  const hasMcqs = totalMcqs > 0;
+  const hasTwist = !!twistQuestion;
+  const hasDescriptive = !!getDescriptiveQuestion(currentChallenge);
+  const isIdeas = !hasMcqs && !hasDescriptive;
+  const isLastChallenge = currentChallengeIndex === WEEKLY_ASSESSMENT.length - 1;
+  const isAllCorrect = (!hasMcqs || mcqScore === totalMcqs) && (!hasTwist || twistCorrect);
+
   return (
-    <div className="min-h-screen gradient-bg flex flex-col">
-      {/* ── Top bar ── */}
-      <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto w-full">
-        <button
-          onClick={handleBackToDen}
-          className="btn-back"
-        >
-          ← Back to Den
-        </button>
-        <div className="flex items-center gap-2">
-          <img src={logo} alt="Logo" style={{ height: 40, objectFit: 'contain' }} />
-          <h1 className="font-bold text-gray-800 text-base">Weekly Challenge 🚀</h1>
-        </div>
-        <div className={`font-bold text-sm ${timeLeft < 120 ? 'timer-critical' : 'text-gray-700'}`}>
-          ⏱️ {formatTime(timeLeft)}
-        </div>
-      </div>
+    <div 
+      className="relative min-h-screen gradient-bg flex flex-col overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fffbeb 100%)' }}
+    >
+      
+      {/* Floating Background Bubbles */}
+      {BUBBLES.map((b, i) => (
+        <div
+          key={i}
+          ref={(el) => { if (el) bubblesRef.current[i] = el; }}
+          className="absolute rounded-full pointer-events-none"
+          style={{
+            width: b.size,
+            height: b.size,
+            backgroundColor: b.bg,
+            opacity: 0.18,
+            top: b.top,
+            left: b.left,
+            zIndex: 0,
+          }}
+        />
+      ))}
 
-      {/* ── Main content ── */}
-      <div className="flex-1 px-2 pb-8">
-        <div className="max-w-2xl mx-auto">
-          {renderProgressDots()}
+      {/* Render the Active State View */}
+      <div className="relative z-10 flex-1 flex flex-col w-full">
+        {isComplete ? (
+          /* ── Completion View ── */
+          <div
+            ref={confettiRef}
+            className="flex-1 flex flex-col items-center justify-center p-4"
+          >
+            <div className="owl-card max-w-lg w-full mx-auto p-8 text-center relative z-10">
+              <div className="text-5xl mb-4 pop-in">🎉</div>
+              <h1 className="text-3xl font-bold text-gray-800 mb-2">Weekly Challenge Complete!</h1>
+              <p className="text-xl text-teal-600 font-bold mb-6">You're a superstar! 🌟</p>
 
-          {/* Challenge card */}
-          <div ref={cardRef} className="owl-card p-6">
-            {/* Challenge header */}
-            <div
-              className="flex items-center gap-3 mb-5 p-3 rounded-2xl"
-              style={{ background: `${currentChallenge.color}20` }}
-            >
-              <span className="text-3xl">{currentChallenge.emoji}</span>
-              <div>
-                <div className="font-bold text-gray-800 text-base">{currentChallenge.title}</div>
-                <div className="text-xs text-gray-500">{currentChallenge.theme}</div>
+              <div className="flex justify-center mb-8">
+                <div className="bg-yellow-50 rounded-2xl p-4 w-48 text-center border-2 border-yellow-100">
+                  <div className="text-2xl mb-1">🏆</div>
+                  <div className="text-lg font-bold text-yellow-600">Weekly Challenge</div>
+                  <div className="text-sm text-gray-500 mt-1">Successfully Completed!</div>
+                </div>
               </div>
-              <div className="ml-auto text-xs text-gray-400 font-bold">
-                {currentChallengeIndex + 1} / {WEEKLY_ASSESSMENT.length}
-              </div>
-            </div>
 
-            {/* Challenge content */}
-            {isMCQOrTwistChallenge(currentChallenge) ? (
-              <>
-                {renderMCQSection()}
-                {renderDescriptiveSection()}
-                {showTwist && currentChallenge.twistQuestion && renderTwistSection(currentChallenge.twistQuestion)}
-              </>
-            ) : (
-              renderIdeasSection()
-            )}
+              <p className="text-gray-500 text-sm mb-6">
+                You successfully tackled the challenges — that's incredible effort!
+              </p>
 
-            {/* Action buttons */}
-            <div className="flex items-center gap-3 mt-6">
-              {currentChallengeIndex > 0 && (
-                <button
-                  onClick={goToPrevChallenge}
-                  className="text-sm text-gray-500 hover:text-gray-700 font-bold transition-colors px-3 py-2"
-                >
-                  ← Previous
-                </button>
-              )}
-              <div className="flex-1" />
-
-              {showTwistContinue ? (
-                <button
-                  className="btn-primary"
-                  onClick={() => setShowFeedbackPage(true)}
-                >
-                  See Challenge Feedback ➔
-                </button>
-              ) : showLockButton ? (
-                <button
-                  className="btn-primary"
-                  disabled={!isLockEnabled()}
-                  onClick={handleLockAndContinue}
-                >
-                  {lockLabel}
-                </button>
-              ) : null}
+              <button
+                className="group relative w-full text-lg font-black py-4 rounded-full cursor-pointer hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg"
+                style={{
+                  background: 'linear-gradient(180deg, #FFEA11 0%, #F5C600 100%)',
+                  color: '#0f172a',
+                  boxShadow: '0 10px 25px rgba(255, 234, 17, 0.35), 0 4px 0 #A88800',
+                  transform: 'translateY(-2px)',
+                }}
+                onClick={() => navigate('/dashboard')}
+              >
+                <span className="absolute inset-0 w-full h-full rounded-full overflow-hidden pointer-events-none">
+                  <span className="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-shimmer" style={{ animationDuration: '1.5s' }} />
+                </span>
+                <span className="relative flex items-center justify-center gap-2">
+                  Back to My Den ➔
+                </span>
+              </button>
             </div>
           </div>
-        </div>
+        ) : showFeedbackPage ? (
+          /* ── Feedback View ── */
+          <div className="flex-1 flex flex-col w-full">
+            {/* Top bar */}
+            <div className="flex items-center justify-between px-4 py-4 max-w-2xl mx-auto w-full relative z-20">
+              <div className="flex items-center gap-2">
+                <img src={logo} alt="Logo" style={{ height: 42, objectFit: 'contain' }} className="drop-shadow-sm" />
+                <h1 className="font-black text-gray-800 text-lg tracking-tight">Quest Report Card 📝</h1>
+              </div>
+              <div className={`font-black text-sm px-3.5 py-1.5 rounded-full bg-white/80 border-2 border-teal-200/50 shadow-sm backdrop-blur-md ${timeLeft < 120 ? 'timer-critical text-red-500' : 'text-gray-700'}`}>
+                ⏱️ {formatTime(timeLeft)}
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 px-4 pb-12 max-w-2xl mx-auto w-full relative z-20">
+              <div className="bg-white/95 border-4 border-[#FFEA11] shadow-2xl p-6 sm:p-8 space-y-8 relative" style={{ borderRadius: 36 }}>
+                {/* Absolute Floating Top Badge */}
+                <div className="absolute top-[-45px] left-1/2 transform -translate-x-1/2 text-7xl filter drop-shadow-lg z-30 select-none pointer-events-none">
+                  {isIdeas ? '💡' : isAllCorrect ? '👑' : '🌟'}
+                </div>
+
+                {/* Header Banner */}
+                <div className="text-center pb-6 border-b-2 border-dashed border-gray-150 pt-8">
+                  <h2 className="text-3xl font-black text-gray-800 tracking-tight">
+                    {isIdeas ? 'Genius Brainstormer!' : isAllCorrect ? 'Perfect Quest Score! 🏆' : 'Great Job, Adventurer!'}
+                  </h2>
+                  <p className="text-xs sm:text-sm font-extrabold text-gray-500 mt-1.5 uppercase tracking-wide">
+                    Feedback for: <span className="text-teal-600 font-black">{currentChallenge.title}</span>
+                  </p>
+                </div>
+
+                {/* Score Summary Pill */}
+                {hasMcqs && (
+                  <div className="bg-teal-50 border-2 border-teal-200 rounded-3xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <span className="font-black text-teal-800 text-sm flex items-center gap-2">
+                      ⭐ Challenge Score Card:
+                    </span>
+                    <span className="bg-teal-600 text-white font-black text-sm px-5 py-1.5 rounded-full shadow-md border-2 border-white">
+                      {mcqScore} / {totalMcqs} Correct Answers
+                    </span>
+                  </div>
+                )}
+
+                {/* MCQ Results */}
+                {hasMcqs && (
+                  <div className="space-y-6">
+                    {mcqs.map((q, qi) => {
+                      const isCorrect = mcqAnswers[qi] === q.correct;
+                      return (
+                        <div
+                          key={qi}
+                          className={`p-6 rounded-3xl border-2 bg-white relative transition-all hover:scale-[1.01] ${
+                            isCorrect
+                              ? 'border-emerald-300 shadow-[0_8px_0_rgba(16,185,129,0.15)]'
+                              : 'border-amber-300 shadow-[0_8px_0_rgba(245,158,11,0.15)]'
+                          }`}
+                        >
+                          {/* Card Header Tag */}
+                          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                            <span className="font-black text-[10px] tracking-widest bg-gray-100 text-gray-500 uppercase px-2.5 py-1 rounded-full border border-gray-200/50">
+                              🔍 mystery check {qi + 1}
+                            </span>
+                            <span
+                              className={`font-black text-xs px-3.5 py-1 rounded-full border-2 text-white shadow-sm ${
+                                isCorrect
+                                  ? 'bg-emerald-500 border-emerald-300'
+                                  : 'bg-amber-500 border-amber-300'
+                              }`}
+                            >
+                              {isCorrect ? '✨ Correct! ✅' : '💪 Keep Learning!'}
+                            </span>
+                          </div>
+
+                          {/* Question Text */}
+                          <p className="font-black text-gray-800 text-base mb-4 leading-snug">
+                            {q.question}
+                          </p>
+
+                          {/* Answer Pills Display */}
+                          <div className="space-y-2 mb-4">
+                            {/* Selected Answer */}
+                            <div className="text-xs">
+                              <span className="font-extrabold text-gray-500 block mb-1">Your Selection:</span>
+                              <div
+                                className={`p-3 rounded-2xl border-2 flex items-center justify-between text-sm font-bold ${
+                                  isCorrect
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                    : 'bg-rose-50 border-rose-200 text-rose-800'
+                                }`}
+                              >
+                                <span>
+                                  {mcqAnswers[qi] !== null ? q.options[mcqAnswers[qi]!] : 'Not Answered'}
+                                </span>
+                                <span className="text-lg">{isCorrect ? '🎉' : '❌'}</span>
+                              </div>
+                            </div>
+
+                            {/* Correct Answer (If incorrect) */}
+                            {!isCorrect && (
+                              <div className="text-xs mt-2">
+                                <span className="font-extrabold text-gray-500 block mb-1">Correct Answer:</span>
+                                <div className="p-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50 text-emerald-800 text-sm font-bold flex items-center justify-between">
+                                  <span>{q.options[q.correct]}</span>
+                                  <span className="text-xs bg-emerald-600 text-white px-2 py-0.5 rounded-md font-black">SUPERSTAR CHOICE</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Owl Wisdom Bubble */}
+                          <div className="p-4 rounded-2xl bg-teal-50/80 border border-teal-100 text-teal-800 text-xs leading-relaxed font-medium flex gap-3 items-start shadow-sm">
+                            <img src={logo} alt="Logo" className="w-8 h-8 object-contain flex-shrink-0 animate-bounce" style={{ animationDuration: '3s' }} />
+                            <div>
+                              <span className="font-black text-teal-900 block mb-0.5">Yellow Owl's Secret:</span>
+                              {q.explanation}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Descriptive Answer Results */}
+                {hasDescriptive && (
+                  <div className="p-6 rounded-3xl border-2 border-amber-300 shadow-[0_8px_0_rgba(245,158,11,0.1)] bg-amber-50/20 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">✍️</span>
+                      <span className="font-black text-gray-800 text-base">Your Creative Masterpiece:</span>
+                    </div>
+                    
+                    {/* Kid's response sheet */}
+                    <div className="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 bottom-0 left-3 w-[1px] bg-red-200/50" />
+                      <p className="pl-6 text-gray-700 text-sm italic font-extrabold font-sans leading-relaxed">
+                        "{currentAnswer.descriptive || 'No response provided'}"
+                      </p>
+                    </div>
+
+                    {/* Reflection sample */}
+                    {getDescriptiveQuestion(currentChallenge)?.sampleAnswer && (
+                      <div className="p-4 rounded-2xl bg-sky-50 border-2 border-sky-100 text-sky-800 text-xs leading-relaxed font-medium flex gap-2.5 items-start">
+                        <span className="text-2xl flex-shrink-0">💡</span>
+                        <div>
+                          <span className="font-black text-sky-950 block mb-0.5">Spark your imagination:</span>
+                          {getDescriptiveQuestion(currentChallenge)?.sampleAnswer}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Twist Answer Results */}
+                {hasTwist && twistQuestion && twistAnswer !== null && (
+                  <div className="p-6 rounded-3xl border-2 border-purple-300 shadow-[0_8px_0_rgba(147,51,234,0.15)] bg-purple-50/20 space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🌀</span>
+                        <span className="font-black text-purple-900 text-base">Surprise Twist:</span>
+                      </div>
+                      <span className={`font-black text-xs px-3.5 py-1 rounded-full text-white border-2 shadow-sm ${twistCorrect ? 'bg-purple-600 border-purple-400' : 'bg-gray-500 border-gray-400'}`}>
+                        {twistCorrect ? '✨ Magic Cracked! 🎉' : 'Keep Trying!'}
+                      </span>
+                    </div>
+
+                    <p className="font-black text-gray-850 text-sm leading-snug">{twistQuestion.question}</p>
+
+                    {/* Twist Selection display */}
+                    <div className="space-y-2">
+                      <div className="text-xs">
+                        <span className="font-extrabold text-gray-500 block mb-1">Your Twist Guess:</span>
+                        <div className={`p-3 rounded-2xl border-2 text-sm font-bold ${twistCorrect ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-rose-50 border-rose-200 text-rose-800'}`}>
+                          {twistQuestion.options[twistAnswer]} {twistCorrect ? '✅' : '❌'}
+                        </div>
+                      </div>
+
+                      {!twistCorrect && (
+                        <div className="text-xs">
+                          <span className="font-extrabold text-gray-500 block mb-1">Correct Answer:</span>
+                          <div className="p-3 rounded-2xl border-2 border-purple-200 bg-purple-50 text-purple-800 text-sm font-bold">
+                            {twistQuestion.options[twistQuestion.correct]}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Twist Wisdom Bubble */}
+                    <div className="p-4 rounded-2xl bg-purple-100/60 border border-purple-200/50 text-purple-950 text-xs leading-relaxed font-medium flex gap-3 items-start">
+                      <span className="text-2xl flex-shrink-0 animate-pulse">🔮</span>
+                      <div>
+                        <span className="font-black text-purple-950 block mb-0.5">Twist Secret Revealed:</span>
+                        {twistQuestion.explanation}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Ideas List Results */}
+                {isIdeas && (
+                  <div className="p-6 rounded-3xl border-2 border-violet-300 shadow-[0_8px_0_rgba(139,92,246,0.15)] bg-violet-50/20 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">💡</span>
+                      <span className="font-black text-violet-850 text-base">Your Brainstormed Ideas:</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {currentAnswer.ideas.filter(idea => idea.trim() !== '').map((idea, idx) => (
+                        <div
+                          key={idx}
+                          className="flex gap-3 text-sm text-gray-700 bg-white p-3.5 rounded-2xl border-2 border-violet-100 font-extrabold shadow-sm hover:scale-[1.01] transition-transform"
+                        >
+                          <span className="font-black text-violet-600 bg-violet-50 w-6 h-6 flex items-center justify-center rounded-full text-xs border border-violet-200">
+                            {idx + 1}
+                          </span>
+                          <span className="flex-1 leading-snug">{idea}</span>
+                        </div>
+                      ))}
+                      {currentAnswer.ideas.filter(idea => idea.trim() !== '').length === 0 && (
+                        <p className="text-gray-400 text-xs italic pl-2">No ideas entered.</p>
+                      )}
+                    </div>
+
+                    <div className="p-4 rounded-3xl bg-teal-50 border-2 border-teal-200 text-center shadow-sm">
+                      <p className="text-3xl mb-1.5 animate-bounce" style={{ animationDuration: '3.5s' }}>🌟</p>
+                      <p className="text-sm font-black text-teal-800">Creativity Spark Unlocked!</p>
+                      <p className="text-xs text-teal-600 mt-1 font-bold">Thinking outside the box is a superpower. Well done!</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Next challenge button */}
+                <button
+                  onClick={() => {
+                    setShowFeedbackPage(false);
+                    if (isLastChallenge) {
+                      handleComplete(true);
+                    } else {
+                      goToNextChallenge();
+                    }
+                  }}
+                  className="group relative w-full text-lg py-4 font-black rounded-full cursor-pointer hover:scale-105 active:scale-95 transition-all duration-300 mt-4 shadow-lg"
+                  style={{
+                    background: 'linear-gradient(180deg, #FFEA11 0%, #F5C600 100%)',
+                    color: '#0f172a',
+                    boxShadow: '0 10px 25px rgba(255, 234, 17, 0.35), 0 4px 0 #A88800',
+                    transform: 'translateY(-2px)',
+                  }}
+                >
+                  <span className="absolute inset-0 w-full h-full rounded-full overflow-hidden pointer-events-none">
+                    <span className="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-shimmer" style={{ animationDuration: '1.5s' }} />
+                  </span>
+                  <span className="relative flex items-center justify-center gap-2">
+                    {isLastChallenge ? 'Finish Quest & View Summary 🎉' : 'Proceed to Next Challenge ➔'}
+                  </span>
+                </button>
+
+              </div>
+            </div>
+          </div>
+        ) : showChallengeIntro ? (
+          /* ── Pre-Assessment Instructions View ── */
+          <div className="flex-1 flex flex-col items-center justify-center p-4">
+            <div className="owl-card max-w-lg w-full mx-auto p-8 relative z-10 text-center animate-pop-in" style={{ borderRadius: 24, boxShadow: '0 8px 32px rgba(255, 234, 17, 0.15)', background: 'white' }}>
+              <span className="text-sm font-black text-[#B8A800] bg-[#fffbeb] px-3 py-1 rounded-full uppercase tracking-wider">
+                Challenge
+              </span>
+              
+              <div
+                className="w-24 h-24 rounded-full flex items-center justify-center text-5xl mx-auto mt-6 mb-4 shadow-sm"
+                style={{ backgroundColor: `${currentChallenge.color}20` }}
+              >
+                {currentChallenge.emoji}
+              </div>
+
+              <h2 className="text-3xl font-black text-gray-800 mb-1">
+                {currentChallenge.title}
+              </h2>
+              <p className="text-base font-extrabold text-gray-500 mb-4">
+                Theme: {currentChallenge.theme}
+              </p>
+
+              {/* Skill tags */}
+              {currentChallenge.skills && currentChallenge.skills.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-2 mb-6">
+                  {currentChallenge.skills.map(skKey => {
+                    const info = (SKILL_DESCRIPTIONS as any)[skKey];
+                    if (!info) return null;
+                    return (
+                      <span
+                        key={skKey}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black text-gray-700 shadow-sm border border-gray-200/50 hover:scale-105 transition-transform cursor-default"
+                        style={{ backgroundColor: `${info.color}35` }}
+                      >
+                        <span>{info.emoji}</span>
+                        <span>{info.label}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="bg-gray-50 rounded-2xl p-5 mb-8 text-left border border-gray-100">
+                <h4 className="font-extrabold text-sm text-gray-700 mb-2">What you'll do:</h4>
+                <p className="text-xs text-gray-600 font-semibold leading-relaxed">
+                  {currentChallengeIndex === 0 ? 'Crack detective questions about plants, sunlight, and clean air!' :
+                   currentChallengeIndex === 1 ? 'Explore story elements, character roles, and rewrite your own creative ending!' :
+                   currentChallengeIndex === 2 ? 'Use your magic wand to imagine and design 5 major improvements for your school!' :
+                   currentChallengeIndex === 3 ? 'Travel to the year 2050 and list your top futuristic inventions to help humanity!' :
+                   'Look back on all your achievements, challenges, and thoughts during this quest!'}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  className="group relative w-full text-lg py-4 font-black rounded-full cursor-pointer hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg"
+                  style={{
+                    background: 'linear-gradient(180deg, #FFEA11 0%, #F5C600 100%)',
+                    color: '#0f172a',
+                    boxShadow: '0 10px 25px rgba(255, 234, 17, 0.35), 0 4px 0 #A88800',
+                    transform: 'translateY(-2px)',
+                  }}
+                  onClick={handleStartChallenge}
+                >
+                  <span className="absolute inset-0 w-full h-full rounded-full overflow-hidden pointer-events-none">
+                    <span className="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-shimmer" style={{ animationDuration: '1.5s' }} />
+                  </span>
+                  <span className="relative flex items-center justify-center gap-2">
+                    Enter Challenge 🚀
+                  </span>
+                </button>
+                
+                <button
+                  className="font-bold text-sm text-gray-500 hover:text-yellow-600 transition-colors mt-2"
+                  onClick={handleBackToDen}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  ← Back to Den
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ── Assessment View ── */
+          <>
+            {/* Top Bar */}
+            <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto w-full">
+              <button
+                onClick={handleBackToDen}
+                className="btn-back"
+              >
+                ← Back to Den
+              </button>
+              <div className="flex items-center gap-2">
+                <img src={logo} alt="Logo" style={{ height: 40, objectFit: 'contain' }} />
+                <h1 className="font-bold text-gray-800 text-base">Weekly Challenge 🚀</h1>
+              </div>
+              <div className={`font-bold text-sm ${timeLeft < 120 ? 'timer-critical' : 'text-gray-700'}`}>
+                ⏱️ {formatTime(timeLeft)}
+              </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 px-2 pb-8">
+              <div className="max-w-2xl mx-auto">
+                
+                {/* Challenge Card */}
+                <div ref={cardRef} className="owl-card p-6">
+                  
+                  {/* Challenge Header */}
+                  <div
+                    className="flex items-center gap-3 mb-5 p-3 rounded-2xl"
+                    style={{ background: `${currentChallenge.color}20` }}
+                  >
+                    <span className="text-3xl">{currentChallenge.emoji}</span>
+                    <div>
+                      <div className="font-bold text-gray-800 text-base">{currentChallenge.title}</div>
+                      <div className="text-xs text-gray-500">{currentChallenge.theme}</div>
+                    </div>
+                    <div className="ml-auto text-xs text-gray-400 font-bold">
+                      Challenge
+                    </div>
+                  </div>
+
+                  {/* Challenge Content */}
+                  {isMCQOrTwistChallenge(currentChallenge) ? (
+                    <>
+                      {renderMCQSection()}
+                      {renderDescriptiveSection()}
+                      {showTwist && currentChallenge.twistQuestion && renderTwistSection(currentChallenge.twistQuestion)}
+                    </>
+                  ) : (
+                    renderIdeasSection()
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-3 mt-6">
+                    {currentChallengeIndex > 0 && (
+                      <button
+                        onClick={goToPrevChallenge}
+                        className="text-sm text-gray-500 hover:text-gray-700 font-bold transition-colors px-3 py-2"
+                      >
+                        ← Previous
+                      </button>
+                    )}
+                    <div className="flex-1" />
+
+                    {showTwistContinue ? (
+                      <button
+                        className="group relative text-base font-black py-3.5 px-8 rounded-full cursor-pointer hover:scale-105 active:scale-95 transition-all duration-300 shadow-md"
+                        style={{
+                          background: 'linear-gradient(180deg, #FFEA11 0%, #F5C600 100%)',
+                          color: '#0f172a',
+                          boxShadow: '0 8px 20px rgba(255, 234, 17, 0.3), 0 3px 0 #A88800',
+                          transform: 'translateY(-2px)',
+                        }}
+                        onClick={() => setShowFeedbackPage(true)}
+                      >
+                        <span className="absolute inset-0 w-full h-full rounded-full overflow-hidden pointer-events-none">
+                          <span className="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-shimmer" style={{ animationDuration: '1.5s' }} />
+                        </span>
+                        <span className="relative flex items-center gap-2">
+                          See Challenge Feedback ➔
+                        </span>
+                      </button>
+                    ) : showLockButton ? (
+                      <button
+                        className="group relative text-base font-black py-3.5 px-8 rounded-full transition-all duration-300 shadow-md"
+                        style={{
+                          background: isLockEnabled()
+                            ? 'linear-gradient(180deg, #FFEA11 0%, #F5C600 100%)'
+                            : '#e2e8f0',
+                          color: isLockEnabled() ? '#0f172a' : '#94a3b8',
+                          boxShadow: isLockEnabled()
+                            ? '0 8px 20px rgba(255, 234, 17, 0.3), 0 3px 0 #A88800'
+                            : 'none',
+                          transform: isLockEnabled() ? 'translateY(-2px)' : 'none',
+                          cursor: isLockEnabled() ? 'pointer' : 'not-allowed',
+                        }}
+                        disabled={!isLockEnabled()}
+                        onClick={handleLockAndContinue}
+                      >
+                        {isLockEnabled() && (
+                          <span className="absolute inset-0 w-full h-full rounded-full overflow-hidden pointer-events-none">
+                            <span className="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-shimmer" style={{ animationDuration: '1.5s' }} />
+                          </span>
+                        )}
+                        <span className="relative flex items-center gap-2">
+                          {lockLabel}
+                        </span>
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── Idle popup ── */}
@@ -1067,8 +1260,22 @@ export default function WeeklyAssessmentPage() {
             <div className="w-20 h-20 rounded-full bg-teal-100 flex items-center justify-center mx-auto mb-5 text-3xl font-bold text-teal-600">
               {idleCountdown}
             </div>
-            <button className="btn-primary w-full" onClick={handleImHere}>
-              Yes, I'm here! 🙋
+            <button
+              className="group relative w-full text-base font-black py-3.5 rounded-full cursor-pointer hover:scale-105 active:scale-95 transition-all duration-300 shadow-md"
+              style={{
+                background: 'linear-gradient(180deg, #FFEA11 0%, #F5C600 100%)',
+                color: '#0f172a',
+                boxShadow: '0 8px 20px rgba(255, 234, 17, 0.3), 0 3px 0 #A88800',
+                transform: 'translateY(-2px)',
+              }}
+              onClick={handleImHere}
+            >
+              <span className="absolute inset-0 w-full h-full rounded-full overflow-hidden pointer-events-none">
+                <span className="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-shimmer" style={{ animationDuration: '1.5s' }} />
+              </span>
+              <span className="relative flex items-center justify-center gap-2">
+                Yes, I'm here! 🙋
+              </span>
             </button>
           </div>
         </div>
@@ -1078,7 +1285,7 @@ export default function WeeklyAssessmentPage() {
       {!isComplete && (
         <div className="fixed bottom-4 right-4 z-40">
           <button
-            onClick={handleRestartQuest}
+            onClick={handleRestartChallenge}
             className="bg-white/95 hover:bg-red-50 text-red-500 hover:text-red-700 font-black text-xs px-4 py-2.5 rounded-full border-2 border-red-200 shadow-lg transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
           >
             🔄 Restart Challenge

@@ -90,7 +90,7 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    window.location.href = '/login';
   };
 
   // Format join date for display
@@ -172,6 +172,8 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+
 
         {/* Edit Form Card */}
         <div ref={formRef} className="owl-card mt-4 p-6">

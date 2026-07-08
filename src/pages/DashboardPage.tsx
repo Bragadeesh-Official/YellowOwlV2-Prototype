@@ -2,8 +2,8 @@ import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { useApp } from '@/context/AppContext';
-import { SKILL_DESCRIPTIONS } from '@/mock/assessmentData';
 import logo from '@/assets/yellowowllogo.png';
+import { HelpCircle, LogOut } from 'lucide-react';
 
 const BUBBLES = [
   { size: 150, top: '5%', left: '5%', bg: '#2AD5B4' },
@@ -16,34 +16,23 @@ const BUBBLES = [
   { size: 110, top: '92%', left: '15%', bg: '#FFEA11' },
 ];
 
-type SkillKey = keyof typeof SKILL_DESCRIPTIONS;
-
-const SKILL_KEYS: SkillKey[] = ['listening', 'reading', 'thinking', 'imagination'];
-
-const SKILL_CARD_THEMES: Record<SkillKey, { bg: string; border: string; badgeBg: string; barBg: string }> = {
-  listening: { bg: '#F0F3FF', border: '#ADC4FF', badgeBg: '#D6E4FF', barBg: '#5B8CFF' },
-  reading: { bg: '#FCFCE5', border: '#FFD700', badgeBg: '#FFFDE7', barBg: '#E6D200' },
-  thinking: { bg: '#F8F0FC', border: '#D5A6FA', badgeBg: '#F3E0FD', barBg: '#B35BFF' },
-  imagination: { bg: '#FFF4EB', border: '#FFB885', badgeBg: '#FFEADA', barBg: '#FF7F24' },
-};
-
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { profile, isLoggedIn, assessmentProgress, saveAssessmentProgress } = useApp();
+  const { profile, isLoggedIn, assessmentProgress, saveAssessmentProgress, logout } = useApp();
 
+  const pageRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
-  const skillsRef = useRef<HTMLDivElement>(null);
-  const barRefs = useRef<HTMLDivElement[]>([]);
   const statsRef = useRef<HTMLDivElement>(null);
   const assessCardRef = useRef<HTMLDivElement>(null);
+  const skillsSectionRef = useRef<HTMLDivElement>(null);
   const bubblesRef = useRef<HTMLDivElement[]>([]);
   const tourCardRef = useRef<HTMLDivElement>(null);
 
   const [tourStep, setTourStep] = useState(0);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0, arrowLeft: 0, arrowDirection: 'up' });
 
   // Defensive profile lookups to prevent crashes
-  const skills = profile?.skills || { listening: 0, reading: 0, thinking: 0, imagination: 0 };
   const interests = profile?.interests || [];
   const name = profile?.name || 'Explorer';
   const avatar = profile?.avatar && profile.avatar !== '🦉' ? profile.avatar : '🦊';
@@ -71,37 +60,6 @@ export default function DashboardPage() {
           }
         );
       }
-
-      // Skills section fade-in
-      if (skillsRef.current) {
-        gsap.fromTo(skillsRef.current,
-          { y: 20, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.5,
-            delay: 0.2,
-            ease: 'power2.out',
-          }
-        );
-      }
-
-      // Animate skill progress bars
-      const bars = barRefs.current.filter(Boolean);
-      bars.forEach((bar, i) => {
-        const key = SKILL_KEYS[i];
-        const value = skills[key] || 0;
-        gsap.fromTo(
-          bar,
-          { width: '0%' },
-          {
-            width: `${value}%`,
-            duration: 0.9,
-            delay: 0.35 + i * 0.12,
-            ease: 'power2.out',
-          }
-        );
-      });
 
       // Stats row
       if (statsRef.current) {
@@ -190,6 +148,20 @@ export default function DashboardPage() {
             arrowDirection: 'up',
           });
         }
+      } else if (tourStep === 3) {
+        const el = document.getElementById('tour-skills-box');
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          const tooltipWidth = Math.min(320, window.innerWidth - 32);
+          let targetLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+          targetLeft = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, targetLeft));
+          setTooltipPos({
+            top: rect.top + window.scrollY - 16,
+            left: targetLeft,
+            arrowLeft: (rect.left + rect.width / 2) - targetLeft,
+            arrowDirection: 'down',
+          });
+        }
       }
     };
 
@@ -216,6 +188,7 @@ export default function DashboardPage() {
   const progress = assessmentProgress as {
     completed?: boolean;
     completedChallengesCount?: number;
+    timeLeft?: number;
   } | null;
 
   const completedCount = progress?.completed
@@ -224,25 +197,49 @@ export default function DashboardPage() {
 
   const hasProgress = !!progress && completedCount > 0 && !progress.completed;
 
-  // Percentage progress from Quest 1 (0%) to Quest 5 (100%)
-  const progressPercent = Math.min(100, Math.max(0, (completedCount / 4) * 100));
+  const timeLeftSeconds = typeof progress?.timeLeft === 'number' ? progress.timeLeft : 900;
+  const timeLeftMinutes = Math.ceil(timeLeftSeconds / 60);
+  const elapsedSeconds = 900 - timeLeftSeconds;
+  const timePercent = Math.max(0, Math.min(100, (elapsedSeconds / 900) * 100));
+  const remainingPercent = Math.max(0, Math.min(100, (timeLeftSeconds / 900) * 100));
+  const isChallengeEnded = !!progress?.completed || timeLeftSeconds <= 0;
 
-  const handleResetProgress = () => {
-    if (window.confirm("Are you sure you want to reset your weekly quest progress? This will clear your completed stepping stones.")) {
-      localStorage.removeItem('yellowowl_assessment_progress');
-      saveAssessmentProgress({
-        completed: false,
-        currentChallengeIndex: 0,
-        completedChallengesCount: 0,
-        answers: {},
-        timeLeft: 900,
-        date: new Date().toISOString(),
-      });
-    }
+  const handleResetChallenge = () => {
+    localStorage.removeItem('yellowowl_assessment_progress');
+    saveAssessmentProgress({
+      completed: false,
+      currentChallengeIndex: 0,
+      completedChallengesCount: 0,
+      answers: {},
+      timeLeft: 900,
+      date: new Date().toISOString(),
+    });
+    setShowSettingsDialog(false);
   };
 
-  // State for interactive skill bubble
-  const [activeSkillBubble, setActiveSkillBubble] = useState<string | null>(null);
+  const handleResetTime = () => {
+    saveAssessmentProgress({
+      timeLeft: 900,
+    });
+    setShowSettingsDialog(false);
+  };
+
+  const handleCompleteChallenge = () => {
+    saveAssessmentProgress({
+      completed: true,
+      completedChallengesCount: 3,
+      timeLeft: 0,
+    });
+    setShowSettingsDialog(false);
+  };
+
+  const handleCompleteTime = () => {
+    saveAssessmentProgress({
+      completed: false,
+      timeLeft: 0,
+    });
+    setShowSettingsDialog(false);
+  };
 
   // Interest-based wisdom generator
   const getOwlWisdom = () => {
@@ -266,15 +263,6 @@ export default function DashboardPage() {
     return "Your owl is so proud of you! Let's do today's challenge to earn more shiny stars! 🦉⭐";
   };
 
-  const handleSkillClick = (key: SkillKey) => {
-    setActiveSkillBubble(activeSkillBubble === key ? null : key);
-    // Bounce animation on the clicked skill card
-    const cardEl = document.getElementById(`skill-card-${key}`);
-    if (cardEl) {
-      gsap.fromTo(cardEl, { y: 0 }, { y: -8, duration: 0.15, yoyo: true, repeat: 1, ease: 'power1.inOut' });
-    }
-  };
-
   return (
     <div className="relative min-h-screen pb-12 overflow-hidden" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fffbeb 100%)' }}>
       {/* Floating Background Bubbles */}
@@ -296,7 +284,7 @@ export default function DashboardPage() {
       ))}
       {/* Top Sticky Navbar - Redesigned to be a premium, playful, floating glassmorphic nav */}
       <nav className="sticky top-4 z-50 px-4 max-w-5xl mx-auto w-full">
-        <div 
+        <div
           className="bg-white/95 backdrop-blur-xl rounded-3xl flex items-center justify-between px-4 sm:px-6 py-2.5 transition-all shadow-lg"
           style={{
             boxShadow: '0 8px 32px rgba(255, 234, 17, 0.1), inset 0 1px 0 rgba(255,255,255,0.6)',
@@ -316,12 +304,24 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setTourStep(1)}
-              className="text-xs font-black bg-teal-50 hover:bg-teal-100 text-teal-600 px-3 py-2 rounded-2xl border border-teal-200/50 transition-all cursor-pointer flex items-center gap-1 shadow-sm hover:scale-105 active:scale-95"
+              className="w-10 h-10 rounded-full bg-teal-50 hover:bg-teal-100 text-teal-600 border border-teal-200/50 transition-all cursor-pointer flex items-center justify-center shadow-sm hover:scale-105 active:scale-95"
+              title="Guide"
             >
-              🗺️ Guide
+              <HelpCircle className="w-5 h-5" />
+            </button>
+
+            <button
+              onClick={() => {
+                logout();
+                window.location.href = '/login';
+              }}
+              className="w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 text-red-500 border border-red-200/50 transition-all cursor-pointer flex items-center justify-center shadow-sm hover:scale-105 active:scale-95"
+              title="Log Out"
+            >
+              <LogOut className="w-5 h-5" />
             </button>
             {/* Playful Explorer Stats Badge */}
-            <div 
+            <div
               id="tour-profile-box"
               className="flex items-center gap-3 bg-[#fffde7] px-4 py-1.5 rounded-2xl shadow-sm"
               style={{
@@ -349,7 +349,7 @@ export default function DashboardPage() {
       </nav>
 
       {/* Main Dashboard Container */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
 
         {/* Welcome & Stats Hero Board */}
         <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-white"
@@ -405,168 +405,260 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Weekly Adventure Quest Map */}
+        {/* Weekly Adventure Challenge Card */}
         <div className="mt-10" ref={assessCardRef}>
           <div
             id="tour-weekly-box"
-            className="rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden"
+            className="rounded-3xl p-8 text-white relative overflow-hidden transition-all duration-300 hover:shadow-lg"
             style={{
-              background: 'linear-gradient(135deg, #2AD5B4 0%, #1FBFA0 100%)',
-              boxShadow: '0 12px 28px rgba(42, 213, 180, 0.2)',
+              backgroundColor: '#1FBFA0',
+              boxShadow: '0 12px 24px rgba(31, 191, 160, 0.15)',
               position: 'relative',
               zIndex: tourStep === 1 ? 9999 : undefined,
             }}
           >
-            <div className="text-center mb-6">
-              <h2 className="text-2xl sm:text-3xl font-black mb-1">Weekly Adventure Map</h2>
-              <p className="text-sm sm:text-base font-extrabold opacity-95">
-                Complete all 5 stepping stones to unlock the weekly treasure chest!
-              </p>
+            <div className="relative z-10 text-center mb-6">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-[#158a74] text-[#FFEA11] uppercase mb-3">
+                Challenge section
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black mb-2 tracking-tight font-display">
+                Weekly Challenge
+              </h2>
+              {isChallengeEnded ? (
+                <div className="flex flex-row items-center gap-6 py-6 w-full max-w-md mx-auto">
+                  {/* Big static logo on the left */}
+                  <img src={logo} alt="Yellow Owl Logo" className="h-32 w-auto object-contain flex-shrink-0" />
+
+                  {/* Dialog Speech Bubble on the right */}
+                  <div className="relative bg-white p-6 rounded-3xl shadow-md border-4 border-[#FFEA11] flex-1">
+                    {/* Arrow pointing left */}
+                    <div
+                      className="absolute"
+                      style={{
+                        left: -12,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        width: 0,
+                        height: 0,
+                        borderTop: '10px solid transparent',
+                        borderBottom: '10px solid transparent',
+                        borderRight: '12px solid white',
+                      }}
+                    />
+                    <div
+                      className="absolute"
+                      style={{
+                        left: -16,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        width: 0,
+                        height: 0,
+                        borderTop: '10px solid transparent',
+                        borderBottom: '10px solid transparent',
+                        borderRight: '12px solid #FFEA11',
+                        zIndex: -1,
+                      }}
+                    />
+                    <div className="text-center">
+                      <p className="text-xl sm:text-2xl font-black text-[#1FBFA0] mb-1">
+                        {progress?.completed ? 'Woohoo! 🎉' : 'Weekly limit is over! '}
+                      </p>
+                      <p className="text-sm sm:text-base font-extrabold text-gray-700 leading-snug">
+                        {progress?.completed
+                          ? 'All challenges completed for this week! ✨'
+                          : 'Weekly limit is over, challenge completed!'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
-            {/* Wavy Stepping Stones Game Path */}
-            <div className="relative w-full py-8 flex flex-col items-center">
-              {/* Connector line behind stages */}
-              <div
-                className="absolute left-10 right-10 hidden sm:block shadow-inner"
-                style={{
-                  height: 8,
-                  backgroundColor: '#10856E',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  zIndex: 0,
-                  borderRadius: 4,
-                }}
-              >
-                {/* Active progress line indicator */}
-                <div
-                  className="h-full rounded-full transition-all duration-700 ease-out"
-                  style={{
-                    width: `${progressPercent}%`,
-                    backgroundColor: '#FFEA11',
-                    boxShadow: '0 0 10px #FFEA11, 0 0 4px #FFEA11',
-                  }}
-                />
-              </div>
+            {/* Side-by-Side Timer and Play Button layout */}
+            {!isChallengeEnded && (
+              <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 mt-6">
 
-              <div className="flex flex-wrap sm:flex-nowrap justify-center sm:justify-between items-center gap-4 sm:gap-0 w-full max-w-2xl relative z-10 px-4">
-                {Array.from({ length: 5 }, (_, i) => {
-                  const isCompleted = i < completedCount;
-                  const isCurrent = i === completedCount;
-                  const isOdd = i % 2 !== 0;
-
-                  // Alternate vertical translation for game board path
-                  const yTranslation = isOdd ? 'sm:-translate-y-4' : 'sm:translate-y-4';
-                  const flexClass = isOdd ? 'flex-col-reverse' : 'flex-col';
-
-                  return (
-                    <div
-                      key={i}
-                      className={`flex ${flexClass} items-center transition-all ${yTranslation}`}
-                    >
-                      <div
-                        className="w-14 h-14 rounded-full flex items-center justify-center font-extrabold text-xl transition-all hover:scale-110 shadow-md relative cursor-default"
+                {/* Left Side: Time Remaining Display */}
+                <div className="flex items-center gap-6">
+                  {/* Circular Timer Progress ring */}
+                  <div className="relative w-28 h-28 flex items-center justify-center rounded-full p-2 flex-shrink-0"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1.5px solid rgba(255, 255, 255, 0.15)',
+                    }}
+                  >
+                    {/* SVG Circular Progress Ring */}
+                    <svg className="absolute inset-0 w-full h-full transform -rotate-90">
+                      {/* Track Circle */}
+                      <circle
+                        cx="56"
+                        cy="56"
+                        r="44"
+                        stroke="rgba(255, 255, 255, 0.15)"
+                        strokeWidth="8"
+                        fill="transparent"
+                      />
+                      {/* Glowing Progress Circle */}
+                      <circle
+                        cx="56"
+                        cy="56"
+                        r="44"
+                        stroke="#FFEA11"
+                        strokeWidth="8"
+                        fill="transparent"
+                        strokeDasharray="276"
+                        strokeDashoffset={276 - (remainingPercent / 100) * 276}
+                        strokeLinecap="round"
                         style={{
-                          backgroundColor: isCompleted ? '#FFEA11' : isCurrent ? '#FFFDE7' : '#169E83',
-                          border: `4px solid ${isCompleted ? '#E6D200' : isCurrent ? '#FFEA11' : '#0F705D'}`,
-                          color: isCompleted ? '#8C7700' : isCurrent ? '#E6D200' : '#A9ECE0',
-                          boxShadow: isCurrent ? '0 0 20px #FFF' : '0 4px 6px rgba(0,0,0,0.1)',
+                          transition: 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)',
                         }}
-                      >
-                        {isCompleted ? '⭐' : isCurrent ? '⚡' : '🔒'}
+                      />
+                    </svg>
 
-                        {/* Current Quest Pulse Glow */}
-                        {isCurrent && (
-                          <span className="absolute -inset-1 rounded-full border-2 border-white animate-ping opacity-75 pointer-events-none" />
-                        )}
-                      </div>
-                      <span className={`text-xs font-black bg-black/20 px-2 py-0.5 rounded-full ${isOdd ? 'mb-2' : 'mt-2'}`}>
-                        Quest {i + 1}
+                    {/* Centered Text */}
+                    <div className="absolute flex flex-col items-center justify-center text-center">
+                      <span className="text-3xl font-black text-white tracking-tight leading-none">
+                        {timeLeftMinutes}
+                      </span>
+                      <span className="text-[8px] font-black text-[#FFEA11] uppercase tracking-widest mt-1 opacity-90">
+                        min left
                       </span>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+                  </div>
 
-            {/* Play Button */}
-            <div className="flex justify-center mt-4">
-              <button
-                type="button"
-                className="btn-primary text-xl font-black py-4 px-12 rounded-full cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-lg"
-                style={{
-                  boxShadow: '0 6px 0 #D4C100, 0 10px 20px rgba(0,0,0,0.15)',
-                  transform: 'translateY(-2px)',
-                }}
-                onClick={() => navigate('/assessment')}
-              >
-                {hasProgress ? 'Continue Quest! ▶️' : 'Start Quest! ➔'}
-              </button>
-            </div>
+                  {/* Text next to the timer */}
+                  <div className="text-left">
+                    <p className="text-xl sm:text-2xl font-black text-white tracking-tight">Time Remaining </p>
+                    <p className="text-xs sm:text-sm font-bold text-white/90 mt-1 max-w-xs leading-relaxed">
+                      Complete the weekly challenge before the timer runs out!
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Side: Play Button */}
+                <div className="flex-shrink-0 w-full md:w-auto flex justify-center md:justify-end">
+                  <button
+                    type="button"
+                    className="group relative text-lg sm:text-xl font-black py-4 px-12 rounded-full cursor-pointer hover:scale-105 active:scale-95 transition-all duration-300 w-full md:w-auto text-center"
+                    style={{
+                      backgroundColor: '#FFEA11',
+                      color: '#0f172a',
+                      boxShadow: '0 5px 0 #A88800',
+                      transform: 'translateY(-2px)',
+                      border: 'none',
+                    }}
+                    onClick={() => navigate('/assessment')}
+                  >
+                    <span className="relative flex items-center justify-center gap-2">
+                      {hasProgress ? 'Continue Challenge!' : 'Start Challenge! ➔'}
+                    </span>
+                  </button>
+                </div>
+
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Skills Section */}
-        <div className="mt-10" ref={skillsRef}>
+        {/* Super Skills Graph Section */}
+        <div
+          id="tour-skills-box"
+          className="mt-10"
+          style={{ position: 'relative', zIndex: tourStep === 3 ? 9999 : undefined }}
+        >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-black text-gray-800">Your Super Skills 💪</h2>
-            <p className="text-xs font-bold text-gray-500">Tap cards to see skill details!</p>
+            <h2 className="text-xl font-black text-gray-800">Your Super Skills</h2>
+            <p className="text-xs font-bold text-gray-500">Weekly progress over the last 3 weeks</p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {SKILL_KEYS.map((key) => {
-              const desc = SKILL_DESCRIPTIONS[key];
-              const value = skills[key] || 0;
-              const theme = SKILL_CARD_THEMES[key];
-              const isBubbleActive = activeSkillBubble === key;
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {[
+              {
+                title: "Digging in",
+                description: "Can spot what's relevant from what isn't",
+                color: "#8B5CF6", // purple
+                history: [1, 2, 3],
+              },
+              {
+                title: "My ideas",
+                description: "Can come up with a few ideas",
+                color: "#0D9488", // teal
+                history: [2, 2, 4],
+              },
+              {
+                title: "Looking closer",
+                description: "Can describe pros and cons of an option",
+                color: "#1E3A8A", // dark blue
+                history: [1, 3, 3],
+              },
+              {
+                title: "Best choice",
+                description: "Can give a reason for a choice",
+                color: "#F97316", // orange
+                history: [3, 4, 4],
+              },
+            ].map((skill, index) => {
+              const getY = (level: number) => {
+                if (level === 4) return 20;
+                if (level === 3) return 50;
+                if (level === 2) return 80;
+                return 110;
+              };
 
               return (
                 <div
-                  key={key}
-                  id={`skill-card-${key}`}
-                  className="rounded-3xl p-5 flex flex-col items-center text-center shadow-sm cursor-pointer transition-all hover:shadow-md"
+                  key={index}
+                  className="bg-white p-6 shadow-sm transition-all hover:shadow-md"
                   style={{
-                    backgroundColor: theme.bg,
-                    border: `3px solid ${theme.border}`,
+                    borderTop: `6px solid ${skill.color}`,
+                    borderLeft: `6px solid ${skill.color}`,
+                    borderRight: '1.5px solid #F3F4F6',
+                    borderBottom: '1.5px solid #F3F4F6',
+                    borderRadius: '24px',
                   }}
-                  onClick={() => handleSkillClick(key)}
                 >
-                  <div
-                    className="w-14 h-14 rounded-full flex items-center justify-center text-3xl mb-3 shadow-inner"
-                    style={{ backgroundColor: theme.badgeBg }}
-                  >
-                    {desc.emoji}
-                  </div>
-                  <div className="text-base font-extrabold text-gray-800 mb-4">{desc.label}</div>
+                  <h3 className="text-lg font-black text-gray-800 mb-1">{skill.title}</h3>
+                  <p className="text-xs font-extrabold mb-4" style={{ color: skill.color }}>
+                    {skill.description}
+                  </p>
 
-                  {/* 5-star rating instead of progress bar */}
-                  <div className="flex items-center gap-1 mb-2 text-2xl">
-                    {[...Array(5)].map((_, starIdx) => {
-                      const starCount = Math.round((value / 100) * 5);
-                      const isFilled = starIdx < starCount;
-                      return (
-                        <span
-                          key={starIdx}
-                          style={{
-                            color: isFilled ? '#FFD700' : '#D1D5DB',
-                            textShadow: isFilled ? '0 1.5px 3px rgba(0,0,0,0.12)' : 'none',
-                          }}
-                        >
-                          ★
-                        </span>
-                      );
-                    })}
-                  </div>
+                  <div className="bg-gray-50/50 p-2.5 rounded-2xl border border-gray-100/50">
+                    <svg viewBox="0 0 300 135" className="w-full h-auto">
+                      {/* Level Grid Lines */}
+                      <text x="5" y="23" className="text-[9px] font-black fill-gray-400">Super</text>
+                      <line x1="55" y1="20" x2="285" y2="20" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
 
-                  {/* Interactive Details Modal/Bubble */}
-                  {isBubbleActive && (
-                    <div className="mt-3 p-2.5 rounded-2xl bg-white border border-gray-100 shadow-sm text-xs font-bold text-gray-600 leading-relaxed">
-                      🦉 {desc.label === 'Listening' ? 'Train your ears to understand complex audio adventures!' :
-                        desc.label === 'Reading' ? 'Master spelling, speed, and comprehension!' :
-                          desc.label === 'Thinking' ? 'Build logic and step-by-step problem solving!' :
-                            'Create new stories and write beautiful descriptions!'}
-                    </div>
-                  )}
+                      <text x="5" y="53" className="text-[9px] font-black fill-gray-400">Strong</text>
+                      <line x1="55" y1="50" x2="285" y2="50" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
+
+                      <text x="5" y="83" className="text-[9px] font-black fill-gray-400">Growing</text>
+                      <line x1="55" y1="80" x2="285" y2="80" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
+
+                      <text x="5" y="113" className="text-[9px] font-black fill-gray-400">Basic</text>
+                      <line x1="55" y1="110" x2="285" y2="110" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
+
+                      {/* Connecting Line */}
+                      <path
+                        d={`M 75 ${getY(skill.history[0])} L 175 ${getY(skill.history[1])} L 275 ${getY(skill.history[2])}`}
+                        fill="none"
+                        stroke={skill.color}
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        style={{ filter: `drop-shadow(0 2px 4px ${skill.color}30)` }}
+                      />
+
+                      {/* Dots */}
+                      <circle cx="75" cy={getY(skill.history[0])} r="5" fill="white" stroke={skill.color} strokeWidth="3" />
+                      <circle cx="175" cy={getY(skill.history[1])} r="5" fill="white" stroke={skill.color} strokeWidth="3" />
+                      <circle cx="275" cy={getY(skill.history[2])} r="5" fill="white" stroke={skill.color} strokeWidth="3" />
+
+                      {/* X-Axis labels */}
+                      <text x="75" y="128" textAnchor="middle" className="text-[9px] font-black fill-gray-500">Wk 1</text>
+                      <text x="175" y="128" textAnchor="middle" className="text-[9px] font-black fill-gray-500">Wk 2</text>
+                      <text x="275" y="128" textAnchor="middle" className="text-[9px] font-black fill-gray-500">Wk 3</text>
+                    </svg>
+                  </div>
                 </div>
               );
             })}
@@ -578,23 +670,66 @@ export default function DashboardPage() {
 
       </div>
 
-      {/* Floating Reset Button at bottom right */}
-      {completedCount > 0 && (
-        <div className="fixed bottom-4 right-4 z-40">
-          <button
-            onClick={handleResetProgress}
-            className="bg-white/95 hover:bg-red-50 text-red-500 hover:text-red-700 font-black text-xs px-4 py-2.5 rounded-full border-2 border-red-200 shadow-lg transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
-          >
-            🔄 Reset Quest Progress
-          </button>
-        </div>
-      )}
+      {/* Floating Simulation Settings Menu at bottom right */}
+      <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end">
+        {showSettingsDialog && (
+          <div className="bg-white/95 backdrop-blur-md border-2 border-teal-100 rounded-3xl p-4 shadow-2xl w-64 mb-3 border-b-4 border-teal-200 animate-pop-in">
+            <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2">
+              <span className="text-xs font-black text-teal-600 uppercase tracking-widest">Simulator 🛠️</span>
+              <button
+                onClick={() => setShowSettingsDialog(false)}
+                className="text-gray-400 hover:text-gray-600 font-bold text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleResetChallenge}
+                className="w-full text-left text-xs font-black bg-red-50 hover:bg-red-100 text-red-600 px-3.5 py-2.5 rounded-2xl border border-red-200/50 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                🔄 Reset Challenge
+              </button>
+
+              <button
+                onClick={handleResetTime}
+                className="w-full text-left text-xs font-black bg-blue-50 hover:bg-blue-100 text-blue-600 px-3.5 py-2.5 rounded-2xl border border-blue-200/50 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                ⏱️ Reset Time (15m)
+              </button>
+
+              <button
+                onClick={handleCompleteChallenge}
+                className="w-full text-left text-xs font-black bg-green-50 hover:bg-green-100 text-green-600 px-3.5 py-2.5 rounded-2xl border border-green-200/50 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                🎉 Complete Challenge
+              </button>
+
+              <button
+                onClick={handleCompleteTime}
+                className="w-full text-left text-xs font-black bg-orange-50 hover:bg-orange-100 text-orange-600 px-3.5 py-2.5 rounded-2xl border border-orange-200/50 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                ⏰ Complete Time (0m)
+              </button>
+            </div>
+          </div>
+        )}
+
+        <button
+          onClick={() => setShowSettingsDialog(!showSettingsDialog)}
+          className="bg-white/95 hover:bg-teal-50 text-teal-600 hover:text-teal-700 font-black text-sm p-3.5 rounded-full border-2 border-teal-150 shadow-lg transition-all flex items-center justify-center active:scale-95 cursor-pointer"
+          title="Simulation Settings"
+        >
+          ⚙️
+        </button>
+      </div>
 
       {/* Onboarding Tour Overlay */}
       {tourStep > 0 && (
         <>
           {/* Dark Backdrop Mask */}
-          <div 
+          <div
             className="fixed inset-0 bg-black/60 z-[9998] transition-opacity duration-300 pointer-events-auto"
             onClick={() => {
               localStorage.setItem('yellowowl_den_tour_completed', 'true');
@@ -612,7 +747,7 @@ export default function DashboardPage() {
             }}
           >
             {/* Arrow indicator */}
-            <div 
+            <div
               className="absolute w-4 h-4 bg-white border-t-4 border-l-4 border-[#FFEA11] rotate-45"
               style={{
                 top: -10,
@@ -623,23 +758,29 @@ export default function DashboardPage() {
             {/* Tooltip Content */}
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-2xl animate-bounce">
-                  {tourStep === 1 ? '🗺️' : '🦉'}
-                </span>
+                {tourStep === 1 ? (
+                  <span className="text-2xl animate-bounce">🗺️</span>
+                ) : tourStep === 2 ? (
+                  <img src={logo} alt="Logo" className="w-8 h-8 object-contain animate-bounce" />
+                ) : (
+                  <span className="text-2xl animate-bounce">📊</span>
+                )}
                 <h3 className="font-black text-gray-800 text-sm">
-                  {tourStep === 1 ? 'Weekly Box' : 'Explorer Profile'}
+                  {tourStep === 1 ? 'Weekly Box' : tourStep === 2 ? 'Explorer Profile' : 'Your Super Skills'}
                 </h3>
               </div>
-              
+
               <p className="text-xs font-black text-gray-600 leading-relaxed mb-4">
-                {tourStep === 1 
-                  ? 'This is the Weekly Box where your weekly challenges are displayed! Solve them to unlock treasures!'
-                  : 'This is where you can explore your stats, view your level, and customize your avatar!'}
+                {tourStep === 1
+                  ? "This is the Weekly Box where your weekly challenge is displayed! Solve it before time runs out!"
+                  : tourStep === 2
+                  ? 'This is where you can explore your stats, view your level, and customize your avatar!'
+                  : 'These charts show how your thinking skills grow each week — like Digging In, My Ideas, and Best Choice. Keep practicing to level them up! 🚀'}
               </p>
 
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black text-gray-400 uppercase">
-                  Step {tourStep} of 2
+                  Step {tourStep} of 3
                 </span>
                 <div className="flex gap-2">
                   <button
@@ -655,6 +796,8 @@ export default function DashboardPage() {
                     onClick={() => {
                       if (tourStep === 1) {
                         setTourStep(2);
+                      } else if (tourStep === 2) {
+                        setTourStep(3);
                       } else {
                         localStorage.setItem('yellowowl_den_tour_completed', 'true');
                         setTourStep(0);
@@ -662,7 +805,7 @@ export default function DashboardPage() {
                     }}
                     className="bg-[#FFEA11] hover:bg-[#F3E000] text-gray-800 text-xs font-black px-3.5 py-1.5 rounded-xl shadow-sm hover:scale-105 active:scale-95 transition-all cursor-pointer"
                   >
-                    {tourStep === 1 ? 'Next ➔' : 'Got it! 🎉'}
+                    {tourStep < 3 ? 'Next ➔' : 'Got it! 🎉'}
                   </button>
                 </div>
               </div>
