@@ -50,14 +50,27 @@ interface ChallengeAnswer {
 type AnswersMap = Record<number, ChallengeAnswer>;
 
 const BUBBLES = [
-  { size: 150, top: '5%', left: '5%', bg: '#2AD5B4' },
+  { size: 150, top: '5%',  left: '5%',  bg: '#2AD5B4' },
   { size: 100, top: '15%', left: '80%', bg: '#FFEA11' },
   { size: 125, top: '28%', left: '42%', bg: '#2AD5B4' },
   { size: 180, top: '42%', left: '10%', bg: '#FFEA11' },
   { size: 130, top: '55%', left: '75%', bg: '#FFEA11' },
-  { size: 95, top: '68%', left: '32%', bg: '#2AD5B4' },
+  { size: 95,  top: '68%', left: '32%', bg: '#2AD5B4' },
   { size: 140, top: '80%', left: '60%', bg: '#2AD5B4' },
   { size: 110, top: '92%', left: '15%', bg: '#FFEA11' },
+  // additional circles
+  { size: 70,  top: '3%',  left: '55%', bg: '#FFEA11' },
+  { size: 90,  top: '10%', left: '30%', bg: '#2AD5B4' },
+  { size: 200, top: '20%', left: '88%', bg: '#2AD5B4' },
+  { size: 60,  top: '35%', left: '63%', bg: '#FFEA11' },
+  { size: 115, top: '48%', left: '50%', bg: '#2AD5B4' },
+  { size: 80,  top: '60%', left: '5%',  bg: '#FFEA11' },
+  { size: 220, top: '65%', left: '85%', bg: '#FFEA11' },
+  { size: 75,  top: '72%', left: '48%', bg: '#2AD5B4' },
+  { size: 160, top: '85%', left: '35%', bg: '#FFEA11' },
+  { size: 85,  top: '88%', left: '78%', bg: '#2AD5B4' },
+  { size: 105, top: '96%', left: '55%', bg: '#2AD5B4' },
+  { size: 65,  top: '50%', left: '25%', bg: '#FFEA11' },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -149,6 +162,7 @@ export default function WeeklyAssessmentPage() {
   // ── State ──
   const [showChallengeIntro, setShowChallengeIntro] = useState(true);
   const [showFeedbackPage, setShowFeedbackPage] = useState(false);
+  const [feedbackSlideIndex, setFeedbackSlideIndex] = useState(0);
   const [currentChallengeIndex, setCurrentChallengeIndex] = useState(() => {
     const saved = assessmentProgress as any;
     if (saved && typeof saved.currentChallengeIndex === 'number' && !saved.completed) {
@@ -183,6 +197,7 @@ export default function WeeklyAssessmentPage() {
   // Per-challenge UI state
   const [showTwist, setShowTwist] = useState(false);
   const [showContinueAfterTwist, setShowContinueAfterTwist] = useState(false);
+  const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [, setExplanationVisible] = useState<boolean[]>([]);
 
   // Refs
@@ -193,6 +208,8 @@ export default function WeeklyAssessmentPage() {
   const optionRefs = useRef<(HTMLButtonElement | null)[][]>([]);
   const confettiRef = useRef<HTMLDivElement>(null);
   const bubblesRef = useRef<HTMLDivElement[]>([]);
+  const introCardRef = useRef<HTMLDivElement>(null);
+  const feedbackCardRef = useRef<HTMLDivElement>(null);
 
   const timerPausedRef = useRef(timerPaused);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -206,10 +223,73 @@ export default function WeeklyAssessmentPage() {
     ideas: Array(5).fill(''),
   };
 
+  // Get all questions in the current challenge
+  const getQuestionsList = () => {
+    let mcqCounter = 0;
+    const list = currentChallenge.questions.map((q) => {
+      if (q.type === 'mcq') {
+        const idx = mcqCounter;
+        mcqCounter++;
+        return { ...q, mcqIndex: idx };
+      }
+      return q;
+    });
+    if (currentChallenge.twistQuestion) {
+      list.push({ ...currentChallenge.twistQuestion, type: 'twist' } as any);
+    }
+    return list;
+  };
+  const challengeQuestions = getQuestionsList();
+
+  const isQuestionAnswered = (q: any): boolean => {
+    if (!q) return false;
+    if (q.type === 'mcq') {
+      const mcqIdx = q.mcqIndex;
+      return currentAnswer.mcq[mcqIdx] !== undefined && currentAnswer.mcq[mcqIdx] !== null;
+    }
+    if (q.type === 'descriptive') {
+      return !!(currentAnswer.descriptive && currentAnswer.descriptive.trim() !== '');
+    }
+    if (q.type === 'twist') {
+      return currentAnswer.twist !== undefined && currentAnswer.twist !== null;
+    }
+    if (q.type === 'ideas') {
+      return !!(currentAnswer.ideas && currentAnswer.ideas.some((idea: string) => idea && idea.trim() !== ''));
+    }
+    return false;
+  };
+
+  const canNavigateToQuestion = (targetIdx: number): boolean => {
+    if (showFeedbackPage) return true;
+    if (targetIdx <= activeQuestionIndex) return true;
+    for (let i = 0; i < targetIdx; i++) {
+      if (!isQuestionAnswered(challengeQuestions[i])) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const getQuestionLabel = (q: any, idx: number) => {
+    if (!q) return `Question ${idx + 1}`;
+    if (q.type === 'twist') return `Question ${idx + 1} (Twist)`;
+    return `Question ${idx + 1}`;
+  };
+
+  const getQuestionEmoji = (q: any) => {
+    if (!q) return '❓';
+    if (q.type === 'mcq') return '🎯';
+    if (q.type === 'descriptive') return '✍️';
+    if (q.type === 'ideas') return '💡';
+    if (q.type === 'twist') return '🌀';
+    return '❓';
+  };
+
   // ── Reset per-challenge UI when challenge changes ──
   useEffect(() => {
     setShowTwist(false);
     setShowContinueAfterTwist(false);
+    setActiveQuestionIndex(0);
     const mcqCount = getMCQQuestions(currentChallenge).length;
     setExplanationVisible(Array(mcqCount).fill(false));
     optionRefs.current = getMCQQuestions(currentChallenge).map(() => []);
@@ -222,14 +302,14 @@ export default function WeeklyAssessmentPage() {
   }, [timerPaused]);
 
   useEffect(() => {
-    if (isComplete || timeLeft <= 0) return;
+    if (isComplete || showFeedbackPage || timeLeft <= 0) return;
     const interval = setInterval(() => {
       if (!timerPausedRef.current) {
         setTimeLeft((prev: number) => Math.max(0, prev - 1));
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [isComplete, timeLeft]);
+  }, [isComplete, showFeedbackPage, timeLeft]);
 
   // Navigate back to den when timer expires
   useEffect(() => {
@@ -318,6 +398,34 @@ export default function WeeklyAssessmentPage() {
       });
     });
     return () => ctx.revert();
+  }, [showChallengeIntro, showFeedbackPage, isComplete]);
+
+  // ── GSAP Intro Card & Feedback Card Entrance Animations ──
+  useEffect(() => {
+    if (showChallengeIntro && introCardRef.current) {
+      gsap.fromTo(introCardRef.current,
+        { scale: 0.9, y: 40, opacity: 0 },
+        { scale: 1, y: 0, opacity: 1, duration: 0.6, ease: 'back.out(1.5)' }
+      );
+    }
+  }, [showChallengeIntro]);
+
+  useEffect(() => {
+    if (showFeedbackPage && feedbackCardRef.current) {
+      gsap.fromTo(feedbackCardRef.current,
+        { scale: 0.92, y: 40, opacity: 0 },
+        { scale: 1, y: 0, opacity: 1, duration: 0.65, ease: 'back.out(1.4)' }
+      );
+    }
+  }, [showFeedbackPage]);
+
+  useEffect(() => {
+    if (!showChallengeIntro && !showFeedbackPage && !isComplete && cardRef.current) {
+      gsap.fromTo(cardRef.current,
+        { scale: 0.96, y: 30, opacity: 0 },
+        { scale: 1, y: 0, opacity: 1, duration: 0.5, ease: 'power2.out' }
+      );
+    }
   }, [showChallengeIntro, showFeedbackPage, isComplete]);
 
   // ── Completion / confetti ──
@@ -435,6 +543,7 @@ export default function WeeklyAssessmentPage() {
     if (isMCQOrTwistChallenge(currentChallenge) && currentChallenge.twistQuestion) {
       // Reveal the twist
       setShowTwist(true);
+      setActiveQuestionIndex(challengeQuestions.length - 1);
       setTimeout(() => {
         if (twistBannerRef.current) {
           gsap.from(twistBannerRef.current, {
@@ -456,6 +565,7 @@ export default function WeeklyAssessmentPage() {
         }
       }, 50);
     } else {
+      setFeedbackSlideIndex(0);
       setShowFeedbackPage(true);
     }
   };
@@ -495,9 +605,50 @@ export default function WeeklyAssessmentPage() {
     if (isMCQOrTwistChallenge(currentChallenge)) {
       const mcqs = getMCQQuestions(currentChallenge);
       const allMcqAnswered = mcqs.every((_, i) => currentAnswer.mcq[i] !== null);
-      return allMcqAnswered;
+      const dq = getDescriptiveQuestion(currentChallenge);
+      const descriptiveAnswered = dq ? currentAnswer.descriptive.trim() !== '' : true;
+      return allMcqAnswered && descriptiveAnswered;
     }
     return true; // ideas challenge — always allow
+  };
+
+  const animateQuestionTransition = (direction: 'forward' | 'back', onMidpoint: () => void) => {
+    if (!cardRef.current) {
+      onMidpoint();
+      return;
+    }
+    const exitX = direction === 'forward' ? -150 : 150;
+    const enterX = direction === 'forward' ? 150 : -150;
+    gsap.to(cardRef.current, {
+      x: exitX,
+      opacity: 0,
+      duration: 0.2,
+      ease: 'power2.in',
+      onComplete: () => {
+        onMidpoint();
+        if (cardRef.current) {
+          gsap.fromTo(
+            cardRef.current,
+            { x: enterX, opacity: 0 },
+            { x: 0, opacity: 1, duration: 0.25, ease: 'power2.out' }
+          );
+        }
+      },
+    });
+  };
+
+  const handleQuestionClick = (index: number) => {
+    if (index === activeQuestionIndex) return;
+    const q = challengeQuestions[index];
+    if (!q) return;
+    const isTwist = q.type === 'twist';
+    if (isTwist && !showTwist) {
+      return;
+    }
+    const direction = index > activeQuestionIndex ? 'forward' : 'back';
+    animateQuestionTransition(direction, () => {
+      setActiveQuestionIndex(index);
+    });
   };
 
   // ── Dismiss idle popup ──
@@ -547,30 +698,28 @@ export default function WeeklyAssessmentPage() {
   };
 
   // ── Render helpers ──
-  const renderMCQSection = () => {
+  const renderMCQSection = (qi: number) => {
     const mcqs = getMCQQuestions(currentChallenge);
+    const q = mcqs[qi];
+    if (!q) return null;
     return (
-      <div className="space-y-6">
-        {mcqs.map((q: MCQQuestion, qi: number) => (
-          <div key={qi} className="space-y-3">
-            <p className="font-bold text-gray-800 text-base leading-snug">{q.question}</p>
-            <div className="grid grid-cols-1 gap-2">
-              {q.options.map((opt, oi) => (
-                <MCQOption
-                  key={oi}
-                  option={opt}
-                  index={oi}
-                  selectedIndex={currentAnswer.mcq[qi]}
-                  onSelect={(idx) => handleMCQSelect(qi, idx)}
-                  optionRef={(el) => {
-                    if (!optionRefs.current[qi]) optionRefs.current[qi] = [];
-                    optionRefs.current[qi][oi] = el;
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+      <div className="space-y-4">
+        <p className="font-bold text-gray-800 text-base leading-snug">{q.question}</p>
+        <div className="grid grid-cols-1 gap-2">
+          {q.options.map((opt, oi) => (
+            <MCQOption
+              key={oi}
+              option={opt}
+              index={oi}
+              selectedIndex={currentAnswer.mcq[qi]}
+              onSelect={(idx) => handleMCQSelect(qi, idx)}
+              optionRef={(el) => {
+                if (!optionRefs.current[qi]) optionRefs.current[qi] = [];
+                optionRefs.current[qi][oi] = el;
+              }}
+            />
+          ))}
+        </div>
       </div>
     );
   };
@@ -654,6 +803,204 @@ export default function WeeklyAssessmentPage() {
     );
   };
 
+  const renderActiveQuestion = () => {
+    const q = challengeQuestions[activeQuestionIndex];
+    if (!q) return null;
+
+    switch (q.type) {
+      case 'mcq':
+        return renderMCQSection(q.mcqIndex);
+      case 'descriptive':
+        return renderDescriptiveSection();
+      case 'ideas':
+        return renderIdeasSection();
+      case 'twist':
+        return renderTwistSection(q);
+      default:
+        return null;
+    }
+  };
+
+  const renderActiveQuestionFeedback = () => {
+    const q = challengeQuestions[activeQuestionIndex];
+    if (!q) return null;
+
+    switch (q.type) {
+      case 'mcq': {
+        const qi = q.mcqIndex;
+        const mcqQ = mcqs[qi];
+        if (!mcqQ) return null;
+        const isCorrect = mcqAnswers[qi] === mcqQ.correct;
+        return (
+          <div className="p-6 rounded-3xl border-2 border-teal-200 shadow-[0_8px_0_rgba(13,148,136,0.1)] bg-white relative">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <span className="font-black text-[10px] tracking-widest bg-gray-100 text-gray-500 uppercase px-2.5 py-1 rounded-full border border-gray-200/50">
+                🔍 mystery check {qi + 1}
+              </span>
+              <span className="font-black text-xs px-3.5 py-1 rounded-full border-2 text-teal-650 bg-teal-50 border-teal-200 shadow-sm">
+                {isCorrect ? '✨ Best Choice Selected!' : '🌟 Awesome Effort!'}
+              </span>
+            </div>
+
+            <p className="font-black text-gray-800 text-base mb-4 leading-snug">
+              {mcqQ.question}
+            </p>
+
+            <div className="space-y-2.5 mb-4">
+              <div className="text-xs">
+                <span className="font-extrabold text-gray-500 block mb-1">Your Choice:</span>
+                <div className={`p-3 rounded-2xl border-2 flex items-center justify-between text-sm font-bold ${isCorrect ? 'bg-teal-50 border-teal-200 text-teal-800' : 'bg-sky-50 border-sky-200 text-sky-850'}`}>
+                  <span>
+                    {mcqAnswers[qi] !== null ? mcqQ.options[mcqAnswers[qi]!] : 'Not Answered'}
+                  </span>
+                  {isCorrect ? (
+                    <span className="text-xs bg-teal-600 text-white px-2.5 py-1 rounded-full font-black">BEST CHOICE 🎯</span>
+                  ) : (
+                    <span className="text-lg">🌟</span>
+                  )}
+                </div>
+              </div>
+
+              {!isCorrect && (
+                <div className="text-xs">
+                  <span className="font-extrabold text-gray-500 block mb-1">Best Choice:</span>
+                  <div className="p-3 rounded-2xl border-2 border-teal-200 bg-teal-50/50 text-teal-900 text-sm font-bold flex items-center justify-between">
+                    <span>{mcqQ.options[mcqQ.correct]}</span>
+                    <span className="text-xs bg-teal-650 text-white px-2.5 py-1 rounded-full font-black">BEST CHOICE 🎯</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 rounded-2xl bg-teal-50/80 border border-teal-100 text-teal-850 text-xs leading-relaxed font-medium flex gap-3 items-start shadow-sm">
+              <img src={logo} alt="Logo" className="w-8 h-8 object-contain flex-shrink-0 animate-bounce" style={{ animationDuration: '3s' }} />
+              <div>
+                <span className="font-black text-teal-900 block mb-0.5">Yellow Owl's Secret:</span>
+                {mcqQ.explanation}
+              </div>
+            </div>
+          </div>
+        );
+      }
+      case 'descriptive': {
+        const dq = getDescriptiveQuestion(currentChallenge);
+        if (!dq) return null;
+        return (
+          <div className="p-6 rounded-3xl border-2 border-amber-300 shadow-[0_8px_0_rgba(245,158,11,0.1)] bg-amber-50/20 space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">✍️</span>
+              <span className="font-black text-gray-800 text-base">Your Creative Masterpiece:</span>
+            </div>
+
+            <div className="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 bottom-0 left-3 w-[1px] bg-red-200/50" />
+              <p className="pl-6 text-gray-750 text-sm italic font-extrabold font-sans leading-relaxed">
+                "{currentAnswer.descriptive || 'No response provided'}"
+              </p>
+            </div>
+
+            {dq.sampleAnswer && (
+              <div className="p-4 rounded-2xl bg-sky-50 border-2 border-sky-100 text-sky-850 text-xs leading-relaxed font-medium flex gap-2.5 items-start">
+                <span className="text-2xl flex-shrink-0">💡</span>
+                <div>
+                  <span className="font-black text-sky-950 block mb-0.5">Spark your imagination:</span>
+                  {dq.sampleAnswer}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+      case 'twist': {
+        if (!twistQuestion || twistAnswer === null) return null;
+        return (
+          <div className="p-6 rounded-3xl border-2 border-purple-300 shadow-[0_8px_0_rgba(147,51,234,0.15)] bg-purple-50/20 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🌀</span>
+                <span className="font-black text-purple-900 text-base">Surprise Twist:</span>
+              </div>
+              <span className="font-black text-xs px-3.5 py-1 rounded-full text-purple-650 bg-purple-50 border-2 border-purple-200 shadow-sm">
+                {twistCorrect ? '✨ Best Choice Selected!' : '🌟 Awesome Effort!'}
+              </span>
+            </div>
+
+            <p className="font-black text-gray-855 text-sm leading-snug">{twistQuestion.question}</p>
+
+            <div className="space-y-2.5">
+              <div className="text-xs">
+                <span className="font-extrabold text-gray-500 block mb-1">Your Choice:</span>
+                <div className={`p-3 rounded-2xl border-2 flex items-center justify-between text-sm font-bold ${twistCorrect ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-indigo-50 border-indigo-200 text-indigo-850'}`}>
+                  <span>
+                    {twistQuestion.options[twistAnswer]}
+                  </span>
+                  {twistCorrect ? (
+                    <span className="text-xs bg-purple-600 text-white px-2.5 py-1 rounded-full font-black">BEST CHOICE 🎯</span>
+                  ) : (
+                    <span className="text-lg">🌟</span>
+                  )}
+                </div>
+              </div>
+
+              {!twistCorrect && (
+                <div className="text-xs">
+                  <span className="font-extrabold text-gray-500 block mb-1">Best Choice:</span>
+                  <div className="p-3 rounded-2xl border-2 border-purple-200 bg-purple-50/50 text-purple-950 text-sm font-bold flex items-center justify-between">
+                    <span>{twistQuestion.options[twistQuestion.correct]}</span>
+                    <span className="text-xs bg-purple-600 text-white px-2.5 py-1 rounded-full font-black">BEST CHOICE 🎯</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 rounded-2xl bg-purple-100/60 border border-purple-200/50 text-purple-950 text-xs leading-relaxed font-medium flex gap-3 items-start">
+              <span className="text-2xl flex-shrink-0 animate-pulse">🔮</span>
+              <div>
+                <span className="font-black text-purple-950 block mb-0.5">Twist Secret Revealed:</span>
+                {twistQuestion.explanation}
+              </div>
+            </div>
+          </div>
+        );
+      }
+      case 'ideas': {
+        return (
+          <div className="p-6 rounded-3xl border-2 border-violet-300 shadow-[0_8px_0_rgba(139,92,246,0.15)] bg-violet-50/20 space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">💡</span>
+              <span className="font-black text-violet-850 text-base">Your Brainstormed Ideas:</span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2.5">
+              {currentAnswer.ideas.filter(idea => idea.trim() !== '').map((idea, idx) => (
+                <div
+                  key={idx}
+                  className="flex gap-3 text-sm text-gray-700 bg-white p-3.5 rounded-2xl border-2 border-violet-100 font-extrabold shadow-sm hover:scale-[1.01] transition-transform"
+                >
+                  <span className="font-black text-violet-600 bg-violet-50 w-6 h-6 flex items-center justify-center rounded-full text-xs border border-violet-200">
+                    {idx + 1}
+                  </span>
+                  <span className="flex-1 leading-snug">{idea}</span>
+                </div>
+              ))}
+              {currentAnswer.ideas.filter(idea => idea.trim() !== '').length === 0 && (
+                <p className="text-gray-400 text-xs italic pl-2">No ideas entered.</p>
+              )}
+            </div>
+
+            <div className="p-4 rounded-3xl bg-teal-50 border-2 border-teal-200 text-center shadow-sm">
+              <p className="text-3xl mb-1.5 animate-bounce" style={{ animationDuration: '3.5s' }}>🌟</p>
+              <p className="text-sm font-black text-teal-800">Creativity Spark Unlocked!</p>
+              <p className="text-xs text-teal-650 mt-1 font-bold">Thinking outside the box is a superpower. Well done!</p>
+            </div>
+          </div>
+        );
+      }
+      default:
+        return null;
+    }
+  };
+
 
   const isIdeasChallenge = !isMCQOrTwistChallenge(currentChallenge);
 
@@ -694,7 +1041,7 @@ export default function WeeklyAssessmentPage() {
 
   return (
     <div
-      className="relative min-h-screen gradient-bg flex flex-col overflow-hidden"
+      className="relative min-h-screen gradient-bg flex flex-col overflow-y-auto"
       style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fffbeb 100%)' }}
     >
 
@@ -727,7 +1074,6 @@ export default function WeeklyAssessmentPage() {
             <div className="owl-card max-w-lg w-full mx-auto p-8 text-center relative z-10">
               <div className="text-5xl mb-4 pop-in">🎉</div>
               <h1 className="text-3xl font-bold text-gray-800 mb-2">Weekly Challenge Complete!</h1>
-              <p className="text-xl text-teal-600 font-bold mb-6">You're a superstar! 🌟</p>
 
               <div className="flex justify-center mb-8">
                 <div className="bg-yellow-50 rounded-2xl p-4 w-48 text-center border-2 border-yellow-100">
@@ -750,261 +1096,218 @@ export default function WeeklyAssessmentPage() {
             </div>
           </div>
         ) : showFeedbackPage ? (
-          /* ── Feedback View ── */
-          <div className="flex-1 flex flex-col w-full">
-            {/* Top bar */}
-            <div className="flex items-center justify-between px-4 py-4 max-w-2xl mx-auto w-full relative z-20">
-              <div className="flex items-center gap-2">
-                <img src={logo} alt="Logo" style={{ height: 42, objectFit: 'contain' }} className="drop-shadow-sm" />
-                <h1 className="font-black text-gray-800 text-lg tracking-tight">Quest Report Card 📝</h1>
+          /* ── Feedback View (Slider) ── */
+          <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 w-full relative z-10">
+            <div
+              ref={feedbackCardRef}
+              className="bg-white/95 border-4 border-[#FFEA11] shadow-2xl p-6 sm:p-8 relative max-w-2xl w-full"
+              style={{ borderRadius: 36 }}
+            >
+              {/* Floating top badge */}
+              <div className="absolute top-[-40px] left-1/2 -translate-x-1/2 text-6xl drop-shadow-lg select-none pointer-events-none">
+                {isIdeas ? '💡' : '🌟'}
               </div>
-              <div className={`font-black text-sm px-3.5 py-1.5 rounded-full bg-white/80 border-2 border-teal-200/50 shadow-sm backdrop-blur-md ${timeLeft < 120 ? 'timer-critical text-red-500' : 'text-gray-700'}`}>
-                ⏱️ {formatTime(timeLeft)}
+
+              {/* Header */}
+              <div className="text-center pb-4 border-b-2 border-dashed border-gray-200 pt-3 mb-4">
+                <h2 className="text-xl font-black text-gray-800">
+                  {isIdeas ? 'Genius Brainstormer!' : 'Great Job, Adventurer! 🏆'}
+                </h2>
+                <p className="text-[10px] font-extrabold text-gray-400 mt-1 uppercase tracking-widest">
+                  Feedback · <span className="text-teal-600">{currentChallenge.title}</span>
+                  &nbsp;·&nbsp; {feedbackSlideIndex + 1} / {challengeQuestions.length}
+                </p>
               </div>
-            </div>
 
-            {/* Content */}
-            <div className="flex-1 px-4 pb-12 max-w-2xl mx-auto w-full relative z-20">
-              <div className="bg-white/95 border-4 border-[#FFEA11] shadow-2xl p-6 sm:p-8 space-y-8 relative" style={{ borderRadius: 36 }}>
-                {/* Absolute Floating Top Badge */}
-                <div className="absolute top-[-45px] left-1/2 transform -translate-x-1/2 text-7xl filter drop-shadow-lg z-30 select-none pointer-events-none">
-                  {isIdeas ? '💡' : '🌟'}
-                </div>
-
-                {/* Header Banner */}
-                <div className="text-center pb-6 border-b-2 border-dashed border-gray-150 pt-8">
-                  <h2 className="text-3xl font-black text-gray-800 tracking-tight">
-                    {isIdeas ? 'Genius Brainstormer!' : 'Great Job, Adventurer! 🏆'}
-                  </h2>
-                  <p className="text-xs sm:text-sm font-extrabold text-gray-500 mt-1.5 uppercase tracking-wide">
-                    Feedback for: <span className="text-teal-600 font-black">{currentChallenge.title}</span>
-                  </p>
-                </div>
-
-                {/* Score Summary Pill */}
-                {hasMcqs && (
-                  <div className="bg-teal-50 border-2 border-teal-200 rounded-3xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-                    <span className="font-black text-teal-800 text-sm flex items-center gap-2">
-                      ⭐ Challenge Feedback:
-                    </span>
-                    <span className="bg-teal-600 text-white font-black text-sm px-5 py-1.5 rounded-full shadow-md border-2 border-white">
-                      Reviewing your selections below!
-                    </span>
-                  </div>
-                )}
-
-                {/* MCQ Results */}
-                {hasMcqs && (
-                  <div className="space-y-6">
-                    {mcqs.map((q, qi) => {
-                      const isCorrect = mcqAnswers[qi] === q.correct;
+              {/* Slide content */}
+              <div className="min-h-[240px]">
+                {(() => {
+                  const q = challengeQuestions[feedbackSlideIndex];
+                  if (!q) return null;
+                  switch (q.type) {
+                    case 'mcq': {
+                      const qi = (q as any).mcqIndex;
+                      const mcqQ = mcqs[qi];
+                      if (!mcqQ) return null;
+                      const isCorrect = mcqAnswers[qi] === mcqQ.correct;
                       return (
-                        <div
-                          key={qi}
-                          className="p-6 rounded-3xl border-2 border-teal-200 shadow-[0_8px_0_rgba(13,148,136,0.1)] bg-white relative transition-all hover:scale-[1.01]"
-                        >
-                          {/* Card Header Tag */}
-                          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-                            <span className="font-black text-[10px] tracking-widest bg-gray-100 text-gray-500 uppercase px-2.5 py-1 rounded-full border border-gray-200/50">
-                              🔍 mystery check {qi + 1}
-                            </span>
-                            <span
-                              className="font-black text-xs px-3.5 py-1 rounded-full border-2 text-teal-650 bg-teal-50 border-teal-200 shadow-sm"
-                            >
-                              {isCorrect ? ' Best Choice Selected!' : ' Awesome Effort!'}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <span className="font-black text-[10px] tracking-widest bg-gray-100 text-gray-500 uppercase px-2.5 py-1 rounded-full border border-gray-200/50">🔍 Mystery Check {qi + 1}</span>
+                            <span className={`font-black text-[10px] px-3 py-1 rounded-full border-2 ${isCorrect ? 'bg-teal-50 border-teal-200 text-teal-700' : 'bg-sky-50 border-sky-200 text-sky-700'}`}>
+                              {isCorrect ? '✨ Best Choice!' : '🌟 Great Effort!'}
                             </span>
                           </div>
-
-                          {/* Question Text */}
-                          <p className="font-black text-gray-800 text-base mb-4 leading-snug">
-                            {q.question}
-                          </p>
-
-                          {/* Answer Pills Display */}
-                          <div className="space-y-2.5 mb-4">
-                            {/* Selected Answer */}
+                          <p className="font-black text-gray-800 text-sm leading-snug">{mcqQ.question}</p>
+                          <div className="space-y-2">
                             <div className="text-xs">
-                              <span className="font-extrabold text-gray-500 block mb-1">Your Choice:</span>
-                              <div
-                                className={`p-3 rounded-2xl border-2 flex items-center justify-between text-sm font-bold ${isCorrect
-                                  ? 'bg-teal-50 border-teal-200 text-teal-800'
-                                  : 'bg-sky-50 border-sky-200 text-sky-800'
-                                  }`}
-                              >
-                                <span>
-                                  {mcqAnswers[qi] !== null ? q.options[mcqAnswers[qi]!] : 'Not Answered'}
-                                </span>
-                                {isCorrect ? (
-                                  <span className="text-xs bg-teal-650 text-white px-2.5 py-1 rounded-full font-black">BEST CHOICE 🎯</span>
-                                ) : (
-                                  <span className="text-lg">🌟</span>
-                                )}
+                              <span className="font-extrabold text-gray-400 block mb-1">Your Choice:</span>
+                              <div className={`p-3 rounded-2xl border-2 flex items-center justify-between text-sm font-bold ${isCorrect ? 'bg-teal-50 border-teal-200 text-teal-800' : 'bg-sky-50 border-sky-200 text-sky-800'}`}>
+                                <span>{mcqAnswers[qi] !== null ? mcqQ.options[mcqAnswers[qi]!] : 'Not Answered'}</span>
+                                {isCorrect ? <span className="text-xs bg-teal-600 text-white px-2 py-0.5 rounded-full font-black">BEST 🎯</span> : <span className="text-lg">🌟</span>}
                               </div>
                             </div>
-
-                            {/* Correct Answer (If incorrect) */}
                             {!isCorrect && (
                               <div className="text-xs">
-                                <span className="font-extrabold text-gray-500 block mb-1">Best Choice:</span>
-                                <div className="p-3 rounded-2xl border-2 border-teal-250 bg-teal-50/50 text-teal-900 text-sm font-bold flex items-center justify-between">
-                                  <span>{q.options[q.correct]}</span>
-                                  <span className="text-xs bg-teal-600 text-white px-2.5 py-1 rounded-full font-black">BEST CHOICE 🎯</span>
+                                <span className="font-extrabold text-gray-400 block mb-1">Best Choice:</span>
+                                <div className="p-3 rounded-2xl border-2 border-teal-200 bg-teal-50/60 text-teal-900 text-sm font-bold flex items-center justify-between">
+                                  <span>{mcqQ.options[mcqQ.correct]}</span>
+                                  <span className="text-xs bg-teal-600 text-white px-2 py-0.5 rounded-full font-black">BEST 🎯</span>
                                 </div>
                               </div>
                             )}
                           </div>
-
-                          {/* Owl Wisdom Bubble */}
-                          <div className="p-4 rounded-2xl bg-teal-50/80 border border-teal-100 text-teal-800 text-xs leading-relaxed font-medium flex gap-3 items-start shadow-sm">
-                            <img src={logo} alt="Logo" className="w-8 h-8 object-contain flex-shrink-0 animate-bounce" style={{ animationDuration: '3s' }} />
-                            <div>
-                              <span className="font-black text-teal-900 block mb-0.5">Yellow Owl's Secret:</span>
-                              {q.explanation}
-                            </div>
+                          <div className="p-3 rounded-2xl bg-teal-50 border border-teal-100 text-xs leading-relaxed font-medium flex gap-2 items-start">
+                            <img src={logo} alt="owl" className="w-7 h-7 object-contain flex-shrink-0 animate-bounce" style={{ animationDuration: '3s' }} />
+                            <div><span className="font-black text-teal-900 block mb-0.5">Yellow Owl's Secret:</span>{mcqQ.explanation}</div>
                           </div>
                         </div>
                       );
-                    })}
-                  </div>
-                )}
-
-                {/* Descriptive Answer Results */}
-                {hasDescriptive && (
-                  <div className="p-6 rounded-3xl border-2 border-amber-300 shadow-[0_8px_0_rgba(245,158,11,0.1)] bg-amber-50/20 space-y-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">✍️</span>
-                      <span className="font-black text-gray-800 text-base">Your Creative Masterpiece:</span>
-                    </div>
-
-                    {/* Kid's response sheet */}
-                    <div className="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
-                      <div className="absolute top-0 bottom-0 left-3 w-[1px] bg-red-200/50" />
-                      <p className="pl-6 text-gray-700 text-sm italic font-extrabold font-sans leading-relaxed">
-                        "{currentAnswer.descriptive || 'No response provided'}"
-                      </p>
-                    </div>
-
-                    {/* Reflection sample */}
-                    {getDescriptiveQuestion(currentChallenge)?.sampleAnswer && (
-                      <div className="p-4 rounded-2xl bg-sky-50 border-2 border-sky-100 text-sky-800 text-xs leading-relaxed font-medium flex gap-2.5 items-start">
-                        <span className="text-2xl flex-shrink-0">💡</span>
-                        <div>
-                          <span className="font-black text-sky-950 block mb-0.5">Spark your imagination:</span>
-                          {getDescriptiveQuestion(currentChallenge)?.sampleAnswer}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Twist Answer Results */}
-                {hasTwist && twistQuestion && twistAnswer !== null && (
-                  <div className="p-6 rounded-3xl border-2 border-purple-300 shadow-[0_8px_0_rgba(147,51,234,0.15)] bg-purple-50/20 space-y-4">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl">🌀</span>
-                        <span className="font-black text-purple-900 text-base">Surprise Twist:</span>
-                      </div>
-                      <span className="font-black text-xs px-3.5 py-1 rounded-full text-purple-650 bg-purple-50 border-2 border-purple-200 shadow-sm">
-                        {twistCorrect ? '✨ Best Choice Selected!' : '🌟 Awesome Effort!'}
-                      </span>
-                    </div>
-
-                    <p className="font-black text-gray-850 text-sm leading-snug">{twistQuestion.question}</p>
-
-                    {/* Twist Selection display */}
-                    <div className="space-y-2.5">
-                      <div className="text-xs">
-                        <span className="font-extrabold text-gray-500 block mb-1">Your Choice:</span>
-                        <div className={`p-3 rounded-2xl border-2 flex items-center justify-between text-sm font-bold ${twistCorrect ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-indigo-50 border-indigo-200 text-indigo-850'}`}>
-                          <span>
-                            {twistQuestion.options[twistAnswer]}
-                          </span>
-                          {twistCorrect ? (
-                            <span className="text-xs bg-purple-600 text-white px-2.5 py-1 rounded-full font-black">BEST CHOICE 🎯</span>
-                          ) : (
-                            <span className="text-lg">🌟</span>
+                    }
+                    case 'descriptive': {
+                      const dq = getDescriptiveQuestion(currentChallenge);
+                      if (!dq) return null;
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2"><span className="text-xl">✍️</span><span className="font-black text-gray-800 text-sm">Your Creative Masterpiece:</span></div>
+                          <div className="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 bottom-0 left-3 w-[1px] bg-red-200/50" />
+                            <p className="pl-5 text-gray-700 text-sm italic font-semibold leading-relaxed">"{currentAnswer.descriptive || 'No response provided'}"</p>
+                          </div>
+                          {dq.sampleAnswer && (
+                            <div className="p-3 rounded-2xl bg-sky-50 border-2 border-sky-100 text-xs leading-relaxed font-medium flex gap-2 items-start">
+                              <span className="text-xl flex-shrink-0">💡</span>
+                              <div><span className="font-black text-sky-900 block mb-0.5">Spark your imagination:</span>{dq.sampleAnswer}</div>
+                            </div>
                           )}
                         </div>
-                      </div>
-
-                      {!twistCorrect && (
-                        <div className="text-xs">
-                          <span className="font-extrabold text-gray-500 block mb-1">Best Choice:</span>
-                          <div className="p-3 rounded-2xl border-2 border-purple-200 bg-purple-50/50 text-purple-950 text-sm font-bold flex items-center justify-between">
-                            <span>{twistQuestion.options[twistQuestion.correct]}</span>
-                            <span className="text-xs bg-purple-600 text-white px-2.5 py-1 rounded-full font-black">BEST CHOICE 🎯</span>
+                      );
+                    }
+                    case 'twist': {
+                      if (!twistQuestion || twistAnswer === null) return null;
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2"><span className="text-xl">🌀</span><span className="font-black text-purple-900 text-sm">Surprise Twist:</span></div>
+                            <span className={`font-black text-[10px] px-3 py-1 rounded-full border-2 ${twistCorrect ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-indigo-50 border-indigo-200 text-indigo-700'}`}>
+                              {twistCorrect ? '✨ Best Choice!' : '🌟 Great Effort!'}
+                            </span>
+                          </div>
+                          <p className="font-black text-gray-800 text-sm leading-snug">{twistQuestion.question}</p>
+                          <div className="space-y-2">
+                            <div className="text-xs">
+                              <span className="font-extrabold text-gray-400 block mb-1">Your Choice:</span>
+                              <div className={`p-3 rounded-2xl border-2 flex items-center justify-between text-sm font-bold ${twistCorrect ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-indigo-50 border-indigo-200 text-indigo-800'}`}>
+                                <span>{twistQuestion.options[twistAnswer]}</span>
+                                {twistCorrect ? <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-black">BEST 🎯</span> : <span className="text-lg">🌟</span>}
+                              </div>
+                            </div>
+                            {!twistCorrect && (
+                              <div className="text-xs">
+                                <span className="font-extrabold text-gray-400 block mb-1">Best Choice:</span>
+                                <div className="p-3 rounded-2xl border-2 border-purple-200 bg-purple-50/60 text-purple-900 text-sm font-bold flex items-center justify-between">
+                                  <span>{twistQuestion.options[twistQuestion.correct]}</span>
+                                  <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-black">BEST 🎯</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-3 rounded-2xl bg-purple-50 border border-purple-200 text-xs leading-relaxed font-medium flex gap-2 items-start">
+                            <span className="text-xl flex-shrink-0 animate-pulse">🔮</span>
+                            <div><span className="font-black text-purple-900 block mb-0.5">Twist Revealed:</span>{twistQuestion.explanation}</div>
                           </div>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Twist Wisdom Bubble */}
-                    <div className="p-4 rounded-2xl bg-purple-100/60 border border-purple-200/50 text-purple-950 text-xs leading-relaxed font-medium flex gap-3 items-start">
-                      <span className="text-2xl flex-shrink-0 animate-pulse">🔮</span>
-                      <div>
-                        <span className="font-black text-purple-950 block mb-0.5">Twist Secret Revealed:</span>
-                        {twistQuestion.explanation}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Ideas List Results */}
-                {isIdeas && (
-                  <div className="p-6 rounded-3xl border-2 border-violet-300 shadow-[0_8px_0_rgba(139,92,246,0.15)] bg-violet-50/20 space-y-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">💡</span>
-                      <span className="font-black text-violet-850 text-base">Your Brainstormed Ideas:</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-2.5">
-                      {currentAnswer.ideas.filter(idea => idea.trim() !== '').map((idea, idx) => (
-                        <div
-                          key={idx}
-                          className="flex gap-3 text-sm text-gray-700 bg-white p-3.5 rounded-2xl border-2 border-violet-100 font-extrabold shadow-sm hover:scale-[1.01] transition-transform"
-                        >
-                          <span className="font-black text-violet-600 bg-violet-50 w-6 h-6 flex items-center justify-center rounded-full text-xs border border-violet-200">
-                            {idx + 1}
-                          </span>
-                          <span className="flex-1 leading-snug">{idea}</span>
-                        </div>
-                      ))}
-                      {currentAnswer.ideas.filter(idea => idea.trim() !== '').length === 0 && (
-                        <p className="text-gray-400 text-xs italic pl-2">No ideas entered.</p>
-                      )}
-                    </div>
-
-                    <div className="p-4 rounded-3xl bg-teal-50 border-2 border-teal-200 text-center shadow-sm">
-                      <p className="text-3xl mb-1.5 animate-bounce" style={{ animationDuration: '3.5s' }}>🌟</p>
-                      <p className="text-sm font-black text-teal-800">Creativity Spark Unlocked!</p>
-                      <p className="text-xs text-teal-600 mt-1 font-bold">Thinking outside the box is a superpower. Well done!</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Next challenge button */}
-                <button
-                  onClick={() => {
-                    setShowFeedbackPage(false);
-                    if (isLastChallenge) {
-                      handleComplete(true);
-                    } else {
-                      goToNextChallenge();
+                      );
                     }
-                  }}
-                  className="btn-yellow-owl w-full text-lg py-4 mt-4"
-                >
-                  {isLastChallenge ? 'Finish Quest & View Summary 🎉' : 'Proceed to Next Challenge ➔'}
-                </button>
+                    case 'ideas': {
+                      return (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2"><span className="text-xl">💡</span><span className="font-black text-violet-800 text-sm">Your Brainstormed Ideas:</span></div>
+                          <div className="grid grid-cols-1 gap-2">
+                            {currentAnswer.ideas.filter(i => i.trim() !== '').map((idea, i) => (
+                              <div key={i} className="flex gap-3 text-sm text-gray-700 bg-white p-3 rounded-2xl border-2 border-violet-100 font-semibold shadow-sm">
+                                <span className="font-black text-violet-600 bg-violet-50 w-6 h-6 flex items-center justify-center rounded-full text-xs border border-violet-200 flex-shrink-0">{i + 1}</span>
+                                <span className="flex-1 leading-snug">{idea}</span>
+                              </div>
+                            ))}
+                            {currentAnswer.ideas.filter(i => i.trim() !== '').length === 0 && <p className="text-gray-400 text-xs italic">No ideas entered.</p>}
+                          </div>
+                          <div className="p-3 rounded-3xl bg-teal-50 border-2 border-teal-200 text-center">
+                            <p className="text-2xl mb-1 animate-bounce" style={{ animationDuration: '3.5s' }}>🌟</p>
+                            <p className="text-sm font-black text-teal-800">Creativity Spark Unlocked!</p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    default: return null;
+                  }
+                })()}
+              </div>
 
+              {/* Dot indicators */}
+              <div className="flex justify-center gap-2 mt-5">
+                {challengeQuestions.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setFeedbackSlideIndex(i)}
+                    className={`rounded-full transition-all cursor-pointer ${i === feedbackSlideIndex
+                        ? 'w-6 h-2.5 bg-[#FFEA11] border border-yellow-400'
+                        : 'w-2.5 h-2.5 bg-gray-200 hover:bg-gray-300'
+                      }`}
+                  />
+                ))}
+              </div>
+
+              {/* Nav buttons */}
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
+                <div className="w-24">
+                  {feedbackSlideIndex > 0 && (
+                    <button
+                      onClick={() => setFeedbackSlideIndex(f => f - 1)}
+                      className="text-sm text-gray-500 hover:text-gray-800 font-black py-2 px-4 hover:bg-gray-100 rounded-2xl cursor-pointer transition-all"
+                    >
+                      ← Back
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex-1 flex justify-center">
+                  {feedbackSlideIndex < challengeQuestions.length - 1 ? (
+                    <button
+                      className="btn-yellow-owl text-sm py-2.5 px-7 cursor-pointer"
+                      onClick={() => setFeedbackSlideIndex(f => f + 1)}
+                    >
+                      Next ➔
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setShowFeedbackPage(false);
+                        if (isLastChallenge) {
+                          handleComplete(true);
+                        } else {
+                          goToNextChallenge();
+                        }
+                      }}
+                      className="btn-yellow-owl text-base py-3 px-8 cursor-pointer shadow-lg"
+                    >
+                      {isLastChallenge ? 'Finish Quest 🎉' : 'Next Challenge ➔'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="w-24" />
               </div>
             </div>
           </div>
         ) : showChallengeIntro ? (
           /* ── Pre-Assessment Instructions View ── */
           <div className="flex-1 flex flex-col items-center justify-center p-4">
-            <div className="owl-card max-w-lg w-full mx-auto p-8 relative z-10 text-center animate-pop-in" style={{ borderRadius: 24, boxShadow: '0 8px 32px rgba(255, 234, 17, 0.15)', background: 'white' }}>
+            <div
+              ref={introCardRef}
+              className="owl-card max-w-lg w-full mx-auto p-8 relative z-10 text-center"
+              style={{ borderRadius: 24, boxShadow: '0 8px 32px rgba(255, 234, 17, 0.15)', background: 'white' }}
+            >
               <span className="text-sm font-black text-[#B8A800] bg-[#fffbeb] px-3 py-1 rounded-full uppercase tracking-wider">
                 Challenge
               </span>
@@ -1074,34 +1377,124 @@ export default function WeeklyAssessmentPage() {
           </div>
         ) : (
           /* ── Assessment View ── */
-          <>
-            {/* Top Bar */}
-            <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto w-full">
-              <button
-                onClick={handleBackToDen}
-                className="btn-back"
-              >
-                ← Back to Den
-              </button>
-              <div className="flex items-center gap-2">
-                <img src={logo} alt="Logo" style={{ height: 40, objectFit: 'contain' }} />
-                <h1 className="font-bold text-gray-800 text-base">Weekly Challenge 🚀</h1>
+          <div className="flex-1 flex flex-col md:flex-row w-full min-h-screen relative z-10">
+            {/* Desktop Sidebar (Left side, covers top to bottom) */}
+            <aside className="hidden md:flex w-72 shrink-0 flex-col bg-white/95 backdrop-blur-md p-6 border-r border-yellow-100/50 sticky top-0 h-screen justify-between z-30">
+              <div>
+                {/* Logo & Brand */}
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="bg-[#FFEA11]/20 p-1.5 rounded-2xl border-2 border-[#FFEA11]/40">
+                    <img src={logo} alt="Yellow Owl Logo" className="h-10 w-auto object-contain" />
+                  </div>
+                  <span className="font-black text-xl tracking-wider text-gray-800 font-display">
+                    Yellow Owl
+                  </span>
+                </div>
+
+                {/* Challenge context card */}
+                <div className="flex items-center gap-3 bg-[#fffde7] p-3 rounded-2xl mb-6 border border-yellow-250/50 shadow-sm">
+                  <div className="w-10 h-10 rounded-full bg-[#FFEA11] border-2 border-white shadow-md flex items-center justify-center text-xl shrink-0">
+                    {currentChallenge.emoji}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-black text-gray-800 truncate">{currentChallenge.title}</div>
+                    <div className="text-[10px] text-gray-400 font-bold truncate">{currentChallenge.theme}</div>
+                  </div>
+                </div>
+
+                {/* Questions List */}
+                <div className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 px-2">Questions</div>
+                <nav className="flex flex-wrap gap-2.5 px-2">
+                  {challengeQuestions.map((q, idx) => {
+                    const isActive = idx === activeQuestionIndex;
+                    const isTwist = q.type === 'twist';
+                    const isAnswered = isQuestionAnswered(q);
+                    const isNavigateAllowed = canNavigateToQuestion(idx);
+                    const isLocked = (isTwist && !showTwist) || !isNavigateAllowed;
+
+                    return (
+                      <button
+                        key={idx}
+                        disabled={isLocked}
+                        onClick={() => handleQuestionClick(idx)}
+                        className={`w-12 h-12 flex items-center justify-center rounded-2xl text-base font-black transition-all cursor-pointer ${isActive
+                            ? 'bg-[#FFEA11] text-gray-800 shadow-md cursor-default border border-transparent'
+                            : isLocked
+                              ? 'bg-gray-50 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50'
+                              : isAnswered
+                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-250 shadow-sm hover:bg-emerald-100 hover:border-emerald-300'
+                                : 'bg-white text-gray-700 border border-gray-200 hover:bg-[#FFEA11]/25 hover:text-gray-800 shadow-sm'
+                          }`}
+                      >
+                        {isLocked ? '🔒' : isAnswered && !isActive ? '✓' : idx + 1}
+                      </button>
+                    );
+                  })}
+                </nav>
               </div>
-              <div className={`font-bold text-sm ${timeLeft < 120 ? 'timer-critical' : 'text-gray-700'}`}>
-                ⏱️ {formatTime(timeLeft)}
+
+              {/* Bottom Actions / Timer */}
+              <div className="space-y-4 pt-4 border-t border-gray-100">
+                <div className={`font-black text-sm text-center py-2.5 px-3.5 rounded-2xl border border-teal-150 bg-teal-50/50 ${timeLeft < 120 ? 'text-red-500 animate-pulse' : 'text-gray-700'}`}>
+                  ⏱️ {formatTime(timeLeft)}
+                </div>
+                <button
+                  onClick={handleBackToDen}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-gray-500 hover:bg-gray-100 transition-all cursor-pointer text-left"
+                >
+                  ← Back to Den
+                </button>
               </div>
-            </div>
+            </aside>
 
-            {/* Main Content */}
-            <div className="flex-1 px-2 pb-8">
-              <div className="max-w-2xl mx-auto">
+            {/* Main Area (Right side) */}
+            <div className="flex-1 flex flex-col min-h-screen w-full">
+              {/* Mobile Top Bar */}
+              <div className="flex md:hidden items-center justify-between px-4 py-3 bg-white/95 border-b border-gray-150/80 sticky top-0 z-20">
+                <button onClick={handleBackToDen} className="btn-back">
+                  ← Den
+                </button>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xl">{currentChallenge.emoji}</span>
+                  <span className="font-black text-gray-800 text-sm">{currentChallenge.title}</span>
+                </div>
+                <div className={`font-black text-xs ${timeLeft < 120 ? 'text-red-500 animate-pulse' : 'text-gray-700'}`}>
+                  ⏱️ {formatTime(timeLeft)}
+                </div>
+              </div>
 
-                {/* Challenge Card */}
-                <div ref={cardRef} className="owl-card p-6">
+              {/* Mobile Question Row */}
+              <div className="flex md:hidden gap-1.5 overflow-x-auto p-3 bg-white/70 border-b border-gray-150/50">
+                {challengeQuestions.map((q, idx) => {
+                  const isActive = idx === activeQuestionIndex;
+                  const isTwist = q.type === 'twist';
+                  const isAnswered = isQuestionAnswered(q);
+                  const isNavigateAllowed = canNavigateToQuestion(idx);
+                  const isLocked = (isTwist && !showTwist) || !isNavigateAllowed;
+                  return (
+                    <button
+                      key={idx}
+                      disabled={isLocked}
+                      onClick={() => handleQuestionClick(idx)}
+                      className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${isActive
+                          ? 'bg-[#FFEA11] text-gray-800 shadow-sm'
+                          : isLocked
+                            ? 'bg-gray-100 text-gray-400 opacity-60'
+                            : 'bg-white/80 text-gray-655 hover:bg-gray-100'
+                        }`}
+                    >
+                      {getQuestionLabel(q, idx)}
+                    </button>
+                  );
+                })}
+              </div>
 
-                  {/* Challenge Header */}
+              {/* Main Content Area containing Card */}
+              <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
+                <div ref={cardRef} className="owl-card max-w-2xl w-full p-6 sm:p-8">
+                  {/* Challenge Header context */}
                   <div
-                    className="flex items-center gap-3 mb-5 p-3 rounded-2xl"
+                    className="flex items-center gap-3 mb-6 p-3.5 rounded-2xl"
                     style={{ background: `${currentChallenge.color}20` }}
                   >
                     <span className="text-3xl">{currentChallenge.emoji}</span>
@@ -1109,55 +1502,88 @@ export default function WeeklyAssessmentPage() {
                       <div className="font-bold text-gray-800 text-base">{currentChallenge.title}</div>
                       <div className="text-xs text-gray-500">{currentChallenge.theme}</div>
                     </div>
-                    <div className="ml-auto text-xs text-gray-400 font-bold">
-                      Challenge
+                    <div className="ml-auto text-xs text-teal-650 font-black px-2.5 py-1 rounded-full bg-teal-50 border border-teal-100">
+                      {getQuestionLabel(challengeQuestions[activeQuestionIndex], activeQuestionIndex)}
                     </div>
                   </div>
 
-                  {/* Challenge Content */}
-                  {isMCQOrTwistChallenge(currentChallenge) ? (
-                    <>
-                      {renderMCQSection()}
-                      {renderDescriptiveSection()}
-                      {showTwist && currentChallenge.twistQuestion && renderTwistSection(currentChallenge.twistQuestion)}
-                    </>
-                  ) : (
-                    renderIdeasSection()
-                  )}
+                  {/* Active Question Content */}
+                  <div className="min-h-[220px] flex flex-col justify-center">
+                    {renderActiveQuestion()}
+                  </div>
 
                   {/* Action buttons */}
-                  <div className="flex items-center gap-3 mt-6">
-                    {currentChallengeIndex > 0 && (
+                  <div className="flex items-center gap-3 mt-8 pt-4 border-t border-gray-100">
+                    {/* Back button */}
+                    {activeQuestionIndex > 0 ? (
+                      <button
+                        onClick={() => handleQuestionClick(activeQuestionIndex - 1)}
+                        className="text-sm text-gray-600 hover:text-gray-800 font-black transition-colors px-4 py-2 hover:bg-gray-100 rounded-xl cursor-pointer"
+                      >
+                        ← Back
+                      </button>
+                    ) : currentChallengeIndex > 0 ? (
                       <button
                         onClick={goToPrevChallenge}
-                        className="text-sm text-gray-500 hover:text-gray-700 font-bold transition-colors px-3 py-2"
+                        className="text-sm text-gray-600 hover:text-gray-800 font-black transition-colors px-4 py-2 hover:bg-gray-100 rounded-xl cursor-pointer"
                       >
-                        ← Previous
-                      </button>
-                    )}
-                    <div className="flex-1" />
-
-                    {showTwistContinue ? (
-                      <button
-                        className="btn-yellow-owl text-base py-3.5 px-8"
-                        onClick={() => setShowFeedbackPage(true)}
-                      >
-                        See Challenge Feedback ➔
-                      </button>
-                    ) : showLockButton ? (
-                      <button
-                        className="btn-yellow-owl text-base py-3.5 px-8"
-                        disabled={!isLockEnabled()}
-                        onClick={handleLockAndContinue}
-                      >
-                        {lockLabel}
+                        ← Previous Challenge
                       </button>
                     ) : null}
+
+                    <div className="flex-1" />
+
+                    {/* Next / Action button */}
+                    {activeQuestionIndex < challengeQuestions.length - 1 ? (
+                      activeQuestionIndex === challengeQuestions.length - 2 && currentChallenge.twistQuestion && !showTwist ? (
+                        <div className="flex flex-col items-end gap-1.5">
+                          <button
+                            className="btn-yellow-owl text-base py-3 px-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={!isLockEnabled()}
+                            onClick={handleLockAndContinue}
+                          >
+                            Lock & Reveal Twist 🌀
+                          </button>
+                          {!isLockEnabled() && (
+                            <span className="text-[10px] font-bold text-red-500 animate-pulse">
+                              Answer all questions to unlock twist!
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          className="btn-yellow-owl text-base py-3 px-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!isQuestionAnswered(challengeQuestions[activeQuestionIndex])}
+                          onClick={() => handleQuestionClick(activeQuestionIndex + 1)}
+                        >
+                          Next Question ➔
+                        </button>
+                      )
+                    ) : (
+                      currentChallenge.twistQuestion ? (
+                        <button
+                          className="btn-yellow-owl text-base py-3 px-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!showContinueAfterTwist}
+                          onClick={() => setShowFeedbackPage(true)}
+                        >
+                          See Challenge Feedback ➔
+                        </button>
+                      ) : (
+                        <button
+                          className="btn-yellow-owl text-base py-3 px-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!isQuestionAnswered(challengeQuestions[activeQuestionIndex])}
+                          onClick={() => setShowFeedbackPage(true)}
+                        >
+                          See Challenge Feedback ➔
+                        </button>
+                      )
+                    )}
                   </div>
                 </div>
               </div>
+
             </div>
-          </>
+          </div>
         )}
       </div>
 

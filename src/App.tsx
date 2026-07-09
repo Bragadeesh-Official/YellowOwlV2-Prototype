@@ -9,6 +9,7 @@ import InterestsPage from '@/pages/InterestsPage';
 import WarmupPage from '@/pages/WarmupPage';
 import DashboardPage from '@/pages/DashboardPage';
 import ProfilePage from '@/pages/ProfilePage';
+import SkillsPage from '@/pages/SkillsPage';
 import WeeklyAssessmentPage from '@/pages/WeeklyAssessmentPage';
 import GuardianPage from '@/pages/GuardianPage';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
@@ -37,6 +38,7 @@ function App() {
         <Route path="/warmup" element={<WarmupPage />} />
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/skills" element={<ProtectedRoute><SkillsPage /></ProtectedRoute>} />
         <Route path="/assessment" element={<ProtectedRoute><WeeklyAssessmentPage /></ProtectedRoute>} />
         <Route path="/guardian" element={<ProtectedRoute><GuardianPage /></ProtectedRoute>} />
         <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />

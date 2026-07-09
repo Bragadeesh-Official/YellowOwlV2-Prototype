@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { useApp } from '@/context/AppContext';
 import logo from '@/assets/yellowowllogo.png';
-import { HelpCircle, LogOut } from 'lucide-react';
+
 
 const BUBBLES = [
   { size: 150, top: '5%', left: '5%', bg: '#2AD5B4' },
@@ -29,6 +29,7 @@ export default function DashboardPage() {
   const [tourStep, setTourStep] = useState(0);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0, arrowLeft: 0, arrowDirection: 'up' });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Defensive profile lookups to prevent crashes
   const interests = profile?.interests || [];
@@ -116,51 +117,48 @@ export default function DashboardPage() {
     }
   }, [isLoggedIn]);
 
+  // Auto open mobile menu during navigation steps on small screens
+  useEffect(() => {
+    if (tourStep >= 2 && window.innerWidth < 768) {
+      setMobileMenuOpen(true);
+    } else if (tourStep === 0 || tourStep === 1) {
+      setMobileMenuOpen(false);
+    }
+  }, [tourStep]);
+
   useEffect(() => {
     const updatePosition = () => {
+      let el: HTMLElement | null = null;
       if (tourStep === 1) {
-        const el = document.getElementById('tour-weekly-box');
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          const tooltipWidth = Math.min(320, window.innerWidth - 32);
-          let targetLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
-          targetLeft = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, targetLeft));
-          setTooltipPos({
-            top: rect.bottom + window.scrollY + 16,
-            left: targetLeft,
-            arrowLeft: (rect.left + rect.width / 2) - targetLeft,
-            arrowDirection: 'up',
-          });
-        }
+        el = document.getElementById('tour-weekly-box');
       } else if (tourStep === 2) {
-        const el = document.getElementById('tour-profile-box');
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          const tooltipWidth = Math.min(300, window.innerWidth - 32);
-          let targetLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
-          targetLeft = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, targetLeft));
-          setTooltipPos({
-            top: rect.bottom + window.scrollY + 16,
-            left: targetLeft,
-            arrowLeft: (rect.left + rect.width / 2) - targetLeft,
-            arrowDirection: 'up',
-          });
+        el = document.getElementById('tour-skills-nav');
+        if (el && el.getBoundingClientRect().width === 0) {
+          el = document.getElementById('tour-skills-nav-mobile');
         }
       } else if (tourStep === 3) {
-        const el = document.getElementById('tour-skills-box');
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          const tooltipWidth = Math.min(320, window.innerWidth - 32);
-          let targetLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
-          targetLeft = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, targetLeft));
-          const tooltipHeight = tourCardRef.current ? tourCardRef.current.offsetHeight : 160;
-          setTooltipPos({
-            top: rect.top + window.scrollY - tooltipHeight - 16,
-            left: targetLeft,
-            arrowLeft: (rect.left + rect.width / 2) - targetLeft,
-            arrowDirection: 'down',
-          });
+        el = document.getElementById('tour-profile-nav');
+        if (el && el.getBoundingClientRect().width === 0) {
+          el = document.getElementById('tour-profile-nav-mobile');
         }
+      } else if (tourStep === 4) {
+        el = document.getElementById('tour-guardian-nav');
+        if (el && el.getBoundingClientRect().width === 0) {
+          el = document.getElementById('tour-guardian-nav-mobile');
+        }
+      }
+
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const tooltipWidth = Math.min(320, window.innerWidth - 32);
+        let targetLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+        targetLeft = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, targetLeft));
+        setTooltipPos({
+          top: rect.bottom + window.scrollY + 16,
+          left: targetLeft,
+          arrowLeft: (rect.left + rect.width / 2) - targetLeft,
+          arrowDirection: 'up',
+        });
       }
     };
 
@@ -263,7 +261,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="relative min-h-screen pb-12 overflow-hidden" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fffbeb 100%)' }}>
+    <div className="relative h-screen overflow-hidden flex" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fffbeb 100%)' }}>
       {/* Floating Background Bubbles */}
       {BUBBLES.map((b, i) => (
         <div
@@ -281,77 +279,232 @@ export default function DashboardPage() {
           }}
         />
       ))}
-      {/* Top Sticky Navbar - Redesigned to be a premium, playful, floating glassmorphic nav */}
-      <nav className="sticky top-4 z-50 px-4 max-w-5xl mx-auto w-full">
-        <div
-          className="bg-white/95 backdrop-blur-xl rounded-3xl flex items-center justify-between px-4 sm:px-6 py-2.5 transition-all shadow-lg"
-          style={{
-            boxShadow: '0 8px 32px rgba(255, 234, 17, 0.1), inset 0 1px 0 rgba(255,255,255,0.6)',
-          }}
-        >
+
+      {/* Sidebar (Desktop) */}
+      <aside className={`hidden md:flex w-72 shrink-0 flex-col bg-white/95 backdrop-blur-md p-6 border-r border-yellow-100/50 sticky top-0 h-screen justify-between transition-all ${[2, 3, 4].includes(tourStep) ? 'z-[9999]' : 'z-30'}`}>
+        <div>
           {/* Logo & Brand */}
-          <div className="flex items-center gap-3 group cursor-pointer" onClick={() => navigate('/dashboard')}>
-            <div className="bg-[#FFEA11]/20 p-1.5 rounded-2xl border-2 border-[#FFEA11]/40 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110">
-              <img src={logo} alt="Yellow Owl Logo" className="h-10 sm:h-12 w-auto object-contain" />
+          <div className="flex items-center gap-3 mb-8">
+            <div className="bg-[#FFEA11]/20 p-1.5 rounded-2xl border-2 border-[#FFEA11]/40">
+              <img src={logo} alt="Yellow Owl Logo" className="h-10 w-auto object-contain" />
             </div>
-            <span className="font-black text-xl sm:text-2xl tracking-wider text-gray-800 drop-shadow-sm font-display">
+            <span className="font-black text-xl tracking-wider text-gray-800 font-display">
               Yellow Owl
             </span>
           </div>
 
-          {/* User Profile Info & Actions */}
-          <div className="flex items-center gap-3">
+          {/* User profile box */}
+          <div
+            id="tour-profile-box"
+            className="flex items-center gap-3 bg-[#fffde7] p-3 rounded-2xl mb-6 border border-yellow-250/50 shadow-sm"
+          >
             <button
-              onClick={() => setTourStep(1)}
-              className="w-10 h-10 rounded-full bg-teal-50 hover:bg-teal-100 text-teal-600 border border-teal-200/50 transition-all cursor-pointer flex items-center justify-center shadow-sm hover:scale-105 active:scale-95"
-              title="Guide"
+              onClick={() => navigate('/profile')}
+              className="w-10 h-10 rounded-full bg-[#FFEA11] border-2 border-white shadow-md flex items-center justify-center text-xl shrink-0 hover:scale-105 transition-transform"
             >
-              <HelpCircle className="w-5 h-5" />
+              {avatar}
             </button>
-
-            <button
-              onClick={() => {
-                logout();
-                window.location.href = '/login';
-              }}
-              className="w-10 h-10 rounded-full bg-red-50 hover:bg-red-100 text-red-500 border border-red-200/50 transition-all cursor-pointer flex items-center justify-center shadow-sm hover:scale-105 active:scale-95"
-              title="Log Out"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-            {/* Playful Explorer Stats Badge */}
-            <div
-              id="tour-profile-box"
-              className="flex items-center gap-3 bg-[#fffde7] px-4 py-1.5 rounded-2xl shadow-sm"
-              style={{
-                position: 'relative',
-                zIndex: tourStep === 2 ? 9999 : undefined,
-              }}
-            >
-              <div className="flex flex-col items-end">
-                <span className="text-sm font-black text-gray-800 leading-tight">
-                  {name}
-                </span>
-                <span className="text-[10px] font-black text-amber-900 uppercase tracking-widest leading-none mt-0.5">
-                  ⭐ Lvl {level} Explorer
-                </span>
-              </div>
-              <button
-                onClick={() => navigate('/profile')}
-                className="w-10 h-10 rounded-full bg-[#FFEA11] border-2 border-white shadow-md flex items-center justify-center text-xl hover:scale-110 active:scale-95 transition-all cursor-pointer relative overflow-hidden"
-              >
-                {avatar}
-              </button>
+            <div className="min-w-0">
+              <div className="text-sm font-black text-gray-800 truncate">{name}</div>
             </div>
           </div>
-        </div>
-      </nav>
 
-      {/* Main Dashboard Container */}
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+          {/* Navigation Links */}
+          <nav className="space-y-2">
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className={`w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-left bg-[#FFEA11] text-gray-800 border border-yellow-300/60 shadow-sm cursor-pointer transition-opacity ${tourStep > 0 && tourStep !== 1 ? 'opacity-30' : 'opacity-100'}`}
+            >
+              Adventure Den
+            </button>
+
+            <button
+              id="tour-skills-nav"
+              onClick={() => navigate('/skills')}
+              className={`w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-600 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer ${tourStep > 0 && tourStep !== 2 ? 'opacity-30' : 'opacity-100'} ${tourStep === 2 ? 'bg-[#FFEA11] text-gray-800 border-2 border-yellow-400 shadow-md scale-105' : ''}`}
+            >
+              My Super Skills
+            </button>
+
+            <button
+              id="tour-profile-nav"
+              onClick={() => navigate('/profile')}
+              className={`w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-600 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer ${tourStep > 0 && tourStep !== 3 ? 'opacity-30' : 'opacity-100'} ${tourStep === 3 ? 'bg-[#FFEA11] text-gray-800 border-2 border-yellow-400 shadow-md scale-105' : ''}`}
+            >
+              My Profile
+            </button>
+
+            <button
+              id="tour-guardian-nav"
+              onClick={() => navigate('/guardian')}
+              className={`w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-600 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer ${tourStep > 0 && tourStep !== 4 ? 'opacity-30' : 'opacity-100'} ${tourStep === 4 ? 'bg-[#FFEA11] text-gray-800 border-2 border-yellow-400 shadow-md scale-105' : ''}`}
+            >
+              Guardian View
+            </button>
+          </nav>
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="space-y-2 pt-4 border-t border-gray-100">
+          <button
+            onClick={() => setTourStep(1)}
+            className="w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-teal-650 hover:bg-teal-50 transition-all cursor-pointer text-left"
+          >
+            Guide Tour
+          </button>
+
+          <button
+            onClick={() => {
+              logout();
+              window.location.href = '/login';
+            }}
+            className="w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-red-500 hover:bg-red-50 transition-all cursor-pointer text-left"
+          >
+            Log Out
+          </button>
+        </div>
+      </aside>      {mobileMenuOpen && (
+        <div className={`fixed inset-0 flex md:hidden ${tourStep > 1 ? 'z-[9999]' : 'z-50'}`}>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 transition-opacity"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          {/* Drawer Content */}
+          <aside className="relative flex w-72 max-w-xs flex-col bg-white p-6 shadow-xl border-r border-yellow-100/50 justify-between h-full z-10">
+            <div>
+              {/* Close button */}
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-2">
+                  <img src={logo} alt="Yellow Owl Logo" className="h-8 w-auto object-contain" />
+                  <span className="font-black text-lg tracking-wider text-gray-800">Yellow Owl</span>
+                </div>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 font-black text-lg p-2"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Profile details */}
+              <div className="flex items-center gap-3 bg-[#fffde7] p-3 rounded-2xl mb-6 border border-yellow-200/40">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/profile');
+                  }}
+                  className="w-10 h-10 rounded-full bg-[#FFEA11] border-2 border-white shadow-md flex items-center justify-center text-xl shrink-0"
+                >
+                  {avatar}
+                </button>
+                <div className="min-w-0">
+                  <div className="text-sm font-black text-gray-800 truncate">{name}</div>
+                </div>
+              </div>
+
+              {/* Navigation Links */}
+              <nav className="space-y-2">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-left bg-[#FFEA11] text-gray-800 border border-yellow-300/60 shadow-sm transition-opacity ${tourStep > 0 && tourStep !== 1 ? 'opacity-30' : 'opacity-100'}`}
+                >
+                  Adventure Den
+                </button>
+
+                <button
+                  id="tour-skills-nav-mobile"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/skills');
+                  }}
+                  className={`w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all ${tourStep > 0 && tourStep !== 2 ? 'opacity-30' : 'opacity-100'} ${tourStep === 2 ? 'bg-[#FFEA11] text-gray-800 border-2 border-yellow-400 shadow-md scale-105' : ''}`}
+                >
+                  My Super Skills
+                </button>
+
+                <button
+                  id="tour-profile-nav-mobile"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/profile');
+                  }}
+                  className={`w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all ${tourStep > 0 && tourStep !== 3 ? 'opacity-30' : 'opacity-100'} ${tourStep === 3 ? 'bg-[#FFEA11] text-gray-800 border-2 border-yellow-400 shadow-md scale-105' : ''}`}
+                >
+                  My Profile
+                </button>
+
+                <button
+                  id="tour-guardian-nav-mobile"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/guardian');
+                  }}
+                  className={`w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all ${tourStep > 0 && tourStep !== 4 ? 'opacity-30' : 'opacity-100'} ${tourStep === 4 ? 'bg-[#FFEA11] text-gray-800 border-2 border-yellow-400 shadow-md scale-105' : ''}`}
+                >
+                  Guardian View
+                </button>
+              </nav>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="space-y-2 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setTourStep(1);
+                }}
+                className="w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-teal-650 hover:bg-teal-50 text-left"
+              >
+                Guide Tour
+              </button>
+
+              <button
+                onClick={() => {
+                  logout();
+                  window.location.href = '/login';
+                }}
+                className="w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-red-500 hover:bg-red-50 text-left"
+              >
+                Log Out
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* Main Content Area */}
+      <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 relative z-10 overflow-y-auto h-screen">
+
+        {/* Mobile Header (only visible on mobile) */}
+        <div className="flex md:hidden items-center justify-between bg-white/95 backdrop-blur-md rounded-2xl px-4 py-3 shadow-md mb-6 border border-yellow-100/50">
+          <div className="flex items-center gap-2">
+            <img src={logo} alt="Yellow Owl Logo" className="h-8 w-auto object-contain" />
+            <span className="font-black text-base tracking-wider text-gray-800">Yellow Owl</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              id="tour-profile-box-mobile"
+              onClick={() => navigate('/profile')}
+              className="w-8 h-8 rounded-full bg-[#FFEA11] border border-white shadow-sm flex items-center justify-center text-sm"
+            >
+              {avatar}
+            </button>
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="p-2 rounded-xl bg-teal-50 text-teal-600 border border-teal-200/50 hover:bg-teal-100 transition-all cursor-pointer text-xs font-black"
+            >
+              Menu
+            </button>
+          </div>
+        </div>
 
         {/* Welcome & Stats Hero Board */}
-        <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-white"
+        <div className="relative overflow-hidden rounded-3xl p-5 sm:p-6 bg-white"
           ref={heroRef}
           style={{
             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.04)',
@@ -360,7 +513,7 @@ export default function DashboardPage() {
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
             <div>
               <h1 className="text-3xl sm:text-4xl font-black text-gray-800 mb-2">
-                Hey, {name}! 🌟
+                Hey, {name}!
               </h1>
               <p className="text-base sm:text-lg font-extrabold text-gray-600">
                 Ready for today's learning adventure? Let's explore!
@@ -405,7 +558,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Weekly Adventure Challenge Card */}
-        <div className="mt-10" ref={assessCardRef}>
+        <div className="mt-5" ref={assessCardRef}>
           <div
             id="tour-weekly-box"
             className="rounded-3xl p-8 text-white relative overflow-hidden transition-all duration-300 hover:shadow-lg"
@@ -423,245 +576,98 @@ export default function DashboardPage() {
               <h2 className="text-3xl sm:text-4xl font-black mb-2 tracking-tight font-display">
                 Weekly Challenge
               </h2>
-              {isChallengeEnded ? (
-                <div className="flex flex-row items-center gap-6 py-6 w-full max-w-md mx-auto">
-                  {/* Big static logo on the left */}
-                  <img src={logo} alt="Yellow Owl Logo" className="h-32 w-auto object-contain flex-shrink-0" />
-
-                  {/* Dialog Speech Bubble on the right */}
-                  <div className="relative bg-white p-6 rounded-3xl shadow-md border-4 border-[#FFEA11] flex-1">
-                    {/* Arrow pointing left */}
-                    <div
-                      className="absolute"
-                      style={{
-                        left: -12,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 0,
-                        height: 0,
-                        borderTop: '10px solid transparent',
-                        borderBottom: '10px solid transparent',
-                        borderRight: '12px solid white',
-                      }}
-                    />
-                    <div
-                      className="absolute"
-                      style={{
-                        left: -16,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 0,
-                        height: 0,
-                        borderTop: '10px solid transparent',
-                        borderBottom: '10px solid transparent',
-                        borderRight: '12px solid #FFEA11',
-                        zIndex: -1,
-                      }}
-                    />
-                    <div className="text-center">
-                      <p className="text-xl sm:text-2xl font-black text-[#1FBFA0] mb-1">
-                        {progress?.completed ? 'Woohoo! 🎉' : 'Weekly limit is over! '}
-                      </p>
-                      <p className="text-sm sm:text-base font-extrabold text-gray-700 leading-snug">
-                        {progress?.completed
-                          ? 'All challenges completed for this week! ✨'
-                          : 'Weekly limit is over, challenge completed!'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
             </div>
 
-            {/* Side-by-Side Timer and Play Button layout */}
-            {!isChallengeEnded && (
-              <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 mt-6">
+            {/* Unified layout — same size for active, ended, and completed states */}
+            <div className="relative z-10 flex flex-col items-center gap-6 mt-6">
 
-                {/* Left Side: Time Remaining Display */}
-                <div className="flex items-center gap-6">
-                  {/* Circular Timer Progress ring */}
-                  <div className="relative w-28 h-28 flex items-center justify-center rounded-full p-2 flex-shrink-0"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.08)',
-                      border: '1.5px solid rgba(255, 255, 255, 0.15)',
-                    }}
-                  >
-                    {/* SVG Circular Progress Ring */}
-                    <svg className="absolute inset-0 w-full h-full transform -rotate-90">
-                      {/* Track Circle */}
-                      <circle
-                        cx="56"
-                        cy="56"
-                        r="44"
-                        stroke="rgba(255, 255, 255, 0.15)"
-                        strokeWidth="8"
-                        fill="transparent"
-                      />
-                      {/* Glowing Progress Circle */}
-                      <circle
-                        cx="56"
-                        cy="56"
-                        r="44"
-                        stroke="#FFEA11"
-                        strokeWidth="8"
-                        fill="transparent"
-                        strokeDasharray="276"
-                        strokeDashoffset={276 - (remainingPercent / 100) * 276}
-                        strokeLinecap="round"
-                        style={{
-                          transition: 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)',
-                        }}
-                      />
-                    </svg>
+              {/* Ring — active: countdown progress; ended: empty ring with emoji */}
+              <div className="relative w-44 h-44 flex items-center justify-center rounded-full flex-shrink-0"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1.5px solid rgba(255, 255, 255, 0.15)',
+                }}
+              >
+                <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 176 176">
+                  <circle
+                    cx="88" cy="88" r="72"
+                    stroke="rgba(255, 255, 255, 0.15)"
+                    strokeWidth="10" fill="transparent"
+                  />
+                  <circle
+                    cx="88" cy="88" r="72"
+                    stroke={isChallengeEnded ? (progress?.completed ? '#FFEA11' : 'rgba(255,255,255,0.3)') : '#FFEA11'}
+                    strokeWidth="10" fill="transparent"
+                    strokeDasharray="452"
+                    strokeDashoffset={isChallengeEnded ? (progress?.completed ? 0 : 452) : 452 - (remainingPercent / 100) * 452}
+                    strokeLinecap="round"
+                    style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                  />
+                </svg>
 
-                    {/* Centered Text */}
-                    <div className="absolute flex flex-col items-center justify-center text-center">
-                      <span className="text-3xl font-black text-white tracking-tight leading-none">
+                <div className="absolute flex flex-col items-center justify-center text-center">
+                  {isChallengeEnded ? (
+                    <img src={logo} alt="Yellow Owl" className="w-16 h-16 object-contain" />
+                  ) : (
+                    <>
+                      <span className="text-5xl font-black text-white tracking-tight leading-none">
                         {timeLeftMinutes}
                       </span>
-                      <span className="text-[8px] font-black text-[#FFEA11] uppercase tracking-widest mt-1 opacity-90">
+                      <span className="text-xs font-black text-[#FFEA11] uppercase tracking-widest mt-2 opacity-90">
                         min left
                       </span>
-                    </div>
-                  </div>
-
-                  {/* Text next to the timer */}
-                  <div className="text-left">
-                    <p className="text-xl sm:text-2xl font-black text-white tracking-tight">Time Remaining </p>
-                    <p className="text-xs sm:text-sm font-bold text-white/90 mt-1 max-w-xs leading-relaxed">
-                      Complete the weekly challenge before the timer runs out!
-                    </p>
-                  </div>
+                    </>
+                  )}
                 </div>
-
-                {/* Right Side: Play Button */}
-                <div className="flex-shrink-0 w-full md:w-auto flex justify-center md:justify-end">
-                  <button
-                    type="button"
-                    className="group relative text-lg sm:text-xl font-black py-4 px-12 rounded-full cursor-pointer hover:scale-105 active:scale-95 transition-all duration-300 w-full md:w-auto text-center"
-                    style={{
-                      backgroundColor: '#FFEA11',
-                      color: '#0f172a',
-                      boxShadow: '0 5px 0 #A88800',
-                      transform: 'translateY(-2px)',
-                      border: 'none',
-                    }}
-                    onClick={() => navigate('/assessment')}
-                  >
-                    <span className="relative flex items-center justify-center gap-2">
-                      {hasProgress ? 'Continue Challenge!' : 'Start Challenge! ➔'}
-                    </span>
-                  </button>
-                </div>
-
               </div>
-            )}
+
+              <p className="text-base font-bold text-white/80 text-center">
+                {isChallengeEnded
+                  ? 'Challenge Completed! All challenges done for this week ✨'
+                  : 'Complete the weekly challenge before the timer runs out!'}
+              </p>
+
+              {!isChallengeEnded && (
+                <button
+                  type="button"
+                  className="group relative text-lg sm:text-xl font-black py-4 px-12 rounded-full transition-all duration-300 w-full md:w-auto text-center"
+                  style={{
+                    backgroundColor: '#FFEA11',
+                    color: '#0f172a',
+                    boxShadow: '0 5px 0 #A88800',
+                    transform: 'translateY(-2px)',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => navigate('/assessment')}
+                >
+                  <span className="relative flex items-center justify-center gap-2">
+                    {hasProgress ? 'Continue Challenge!' : 'Start Challenge! ➔'}
+                  </span>
+                </button>
+              )}
+
+            </div>
           </div>
         </div>
 
-        {/* Super Skills Card */}
-        <div
-          id="tour-skills-box"
-          className="owl-card mt-10 p-6 bg-white"
-          style={{ position: 'relative', zIndex: tourStep === 3 ? 9999 : undefined }}
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 border-b border-gray-100 pb-3">
-            <h2 className="text-xl font-black text-gray-800">Your Super Skills</h2>
-            <p className="text-xs font-bold text-gray-500">Weekly progress over the last 3 weeks</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {[
-              {
-                title: "Digging in",
-                description: "Can spot what's relevant from what isn't",
-                color: "#8B5CF6",
-                history: [1, 2, 3],
-              },
-              {
-                title: "My ideas",
-                description: "Can come up with a few ideas",
-                color: "#0D9488",
-                history: [2, 2, 4],
-              },
-              {
-                title: "Looking closer",
-                description: "Can describe pros and cons of an option",
-                color: "#1E3A8A",
-                history: [1, 3, 3],
-              },
-              {
-                title: "Best choice",
-                description: "Can give a reason for a choice",
-                color: "#F97316",
-                history: [3, 4, 4],
-              },
-            ].map((skill, index) => {
-              const getY = (level: number) => {
-                if (level === 4) return 20;
-                if (level === 3) return 50;
-                if (level === 2) return 80;
-                return 110;
-              };
-
-              return (
-                <div key={index} className="flex flex-col">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: skill.color }} />
-                    <h3 className="text-sm font-bold text-gray-800">{skill.title}</h3>
-                  </div>
-                  <p className="text-[10px] font-extrabold mb-2" style={{ color: skill.color }}>
-                    {skill.description}
-                  </p>
-
-                  <div className="bg-gray-50/50 p-2 rounded-xl border border-gray-100/50">
-                    <svg viewBox="0 0 300 135" className="w-full h-auto">
-                      {/* Level Grid Lines */}
-                      <text x="5" y="23" className="text-[9px] font-black fill-gray-400">Super</text>
-                      <line x1="55" y1="20" x2="285" y2="20" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
-
-                      <text x="5" y="53" className="text-[9px] font-black fill-gray-400">Strong</text>
-                      <line x1="55" y1="50" x2="285" y2="50" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
-
-                      <text x="5" y="83" className="text-[9px] font-black fill-gray-400">Growing</text>
-                      <line x1="55" y1="80" x2="285" y2="80" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
-
-                      <text x="5" y="113" className="text-[9px] font-black fill-gray-400">Basic</text>
-                      <line x1="55" y1="110" x2="285" y2="110" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
-
-                      {/* Connecting Line */}
-                      <path
-                        d={`M 75 ${getY(skill.history[0])} L 175 ${getY(skill.history[1])} L 275 ${getY(skill.history[2])}`}
-                        fill="none"
-                        stroke={skill.color}
-                        strokeWidth="3.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        style={{ filter: `drop-shadow(0 2px 4px ${skill.color}30)` }}
-                      />
-
-                      {/* Dots */}
-                      <circle cx="75" cy={getY(skill.history[0])} r="5" fill="white" stroke={skill.color} strokeWidth="3" />
-                      <circle cx="175" cy={getY(skill.history[1])} r="5" fill="white" stroke={skill.color} strokeWidth="3" />
-                      <circle cx="275" cy={getY(skill.history[2])} r="5" fill="white" stroke={skill.color} strokeWidth="3" />
-
-                      {/* X-Axis labels */}
-                      <text x="75" y="128" textAnchor="middle" className="text-[9px] font-black fill-gray-500">Wk 1</text>
-                      <text x="175" y="128" textAnchor="middle" className="text-[9px] font-black fill-gray-500">Wk 2</text>
-                      <text x="275" y="128" textAnchor="middle" className="text-[9px] font-black fill-gray-500">Wk 3</text>
-                    </svg>
-                  </div>
-                </div>
-              );
-            })}
+        {/* Coming Soon Card */}
+        <div className="mt-4">
+          <div
+            className="rounded-3xl p-6 text-white relative overflow-hidden flex flex-col items-center justify-center gap-3"
+            style={{
+              backgroundColor: '#1FBFA0',
+              boxShadow: '0 8px 16px rgba(31, 191, 160, 0.12)',
+              opacity: 0.82,
+            }}
+          >
+            <div className="absolute inset-0 pointer-events-none" style={{ background: 'rgba(0,0,0,0.06)' }} />
+            <img src={logo} alt="Yellow Owl" className="relative z-10 w-20 h-20 object-contain" />
+            <p className="relative z-10 text-3xl font-black text-white tracking-tight">Coming Soon</p>
           </div>
         </div>
-
-        {/* Quick Stats Grid */}
-
 
       </div>
-
       {/* Floating Simulation Settings Menu at bottom right */}
       <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end">
         {showSettingsDialog && (
@@ -764,26 +770,36 @@ export default function DashboardPage() {
                 {tourStep === 1 ? (
                   <span className="text-2xl animate-bounce">🗺️</span>
                 ) : tourStep === 2 ? (
-                  <img src={logo} alt="Logo" className="w-8 h-8 object-contain animate-bounce" />
+                  <span className="text-2xl animate-bounce">⚡</span>
+                ) : tourStep === 3 ? (
+                  <span className="text-2xl animate-bounce">👤</span>
                 ) : (
-                  <span className="text-2xl animate-bounce">📊</span>
+                  <span className="text-2xl animate-bounce">🔒</span>
                 )}
                 <h3 className="font-black text-gray-800 text-sm">
-                  {tourStep === 1 ? 'Weekly Box' : tourStep === 2 ? 'Explorer Profile' : 'Your Super Skills'}
+                  {tourStep === 1
+                    ? 'Weekly Challenge'
+                    : tourStep === 2
+                      ? 'My Super skillss'
+                      : tourStep === 3
+                        ? 'My Profile'
+                        : 'Guardian View'}
                 </h3>
               </div>
 
               <p className="text-xs font-black text-gray-600 leading-relaxed mb-4">
                 {tourStep === 1
-                  ? "This is the Weekly Box where your weekly challenge is displayed! Solve it before time runs out!"
+                  ? "This is the Weekly Assessment box! Solve your weekly challenges here to unlock your potential and earn stars."
                   : tourStep === 2
-                    ? 'This shows your name and level! Click on your avatar here to view your profile, edit your interests, and track your progress!'
-                    : 'These charts show how your thinking skills grow each week — like Digging In, My Ideas, and Best Choice. Keep practicing to level them up!'}
+                    ? "Track your growth across various abilities here! Click this link to see your dynamic progress graphs."
+                    : tourStep === 3
+                      ? "Customize your name, select your avatar, and manage your learning interests to tailor the challenges."
+                      : "A secure, parents-only view displaying in-depth analytical growth patterns and specific next steps for you."}
               </p>
 
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black text-gray-400 uppercase">
-                  Step {tourStep} of 3
+                  Step {tourStep} of 4
                 </span>
                 <div className="flex gap-2">
                   <button
@@ -797,10 +813,8 @@ export default function DashboardPage() {
                   </button>
                   <button
                     onClick={() => {
-                      if (tourStep === 1) {
-                        setTourStep(2);
-                      } else if (tourStep === 2) {
-                        setTourStep(3);
+                      if (tourStep < 4) {
+                        setTourStep(tourStep + 1);
                       } else {
                         localStorage.setItem('yellowowl_den_tour_completed', 'true');
                         setTourStep(0);
@@ -808,7 +822,7 @@ export default function DashboardPage() {
                     }}
                     className="bg-[#FFEA11] hover:bg-[#F3E000] text-gray-800 text-xs font-black px-3.5 py-1.5 rounded-xl shadow-sm hover:scale-105 active:scale-95 transition-all cursor-pointer"
                   >
-                    {tourStep < 3 ? 'Next ➔' : 'Got it!'}
+                    {tourStep < 4 ? 'Next ➔' : 'Got it!'}
                   </button>
                 </div>
               </div>
