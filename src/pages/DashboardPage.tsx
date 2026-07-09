@@ -35,7 +35,6 @@ export default function DashboardPage() {
   const interests = profile?.interests || [];
   const name = profile?.name || 'Explorer';
   const avatar = profile?.avatar && profile.avatar !== '🦉' ? profile.avatar : '🦊';
-  const level = profile?.level || 1;
   // Redirect if not logged in or profile is missing
   useEffect(() => {
     if (!isLoggedIn || !profile) {

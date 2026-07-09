@@ -4,7 +4,6 @@ import gsap from 'gsap';
 import { useApp } from '@/context/AppContext';
 import { MOCK_INTERESTS } from '@/mock/userData';
 import logo from '@/assets/yellowowllogo.png';
-import { HelpCircle, LogOut } from 'lucide-react';
 
 const AVATAR_OPTIONS = ['🦉', '🦊', '🐸', '🐼', '🦋', '🦄', '🐯'];
 
@@ -25,11 +24,9 @@ export default function ProfilePage() {
   const bubblesRef = useRef<HTMLDivElement[]>([]);
 
   // Edit mode state
-  const [isEditing, setIsEditing] = useState(false);
   const [dob, setDob] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [savedFlash, setSavedFlash] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Avatar cycling
@@ -108,13 +105,6 @@ export default function ProfilePage() {
     const next = (avatarIndex + 1) % AVATAR_OPTIONS.length;
     setAvatarIndex(next);
     updateProfile({ avatar: AVATAR_OPTIONS[next] });
-  };
-
-  const handleSave = () => {
-    updateProfile({ dob, email, phone });
-    setIsEditing(false);
-    setSavedFlash(true);
-    setTimeout(() => setSavedFlash(false), 2500);
   };
 
   const handleLogout = () => {
@@ -422,7 +412,20 @@ export default function ProfilePage() {
 
           <div className="flex flex-col gap-4">
             {/* Date of Birth */}
-
+            <div>
+              <label className="block text-sm font-bold text-gray-600 mb-1">
+                Date of Birth
+              </label>
+              <p className="text-base text-gray-800 font-semibold">
+                {dob
+                  ? new Date(dob).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })
+                  : '—'}
+              </p>
+            </div>
 
             {/* Email */}
             <div>

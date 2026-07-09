@@ -2,11 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { useApp } from '@/context/AppContext';
-import { PAST_ASSESSMENTS, SKILL_DESCRIPTIONS } from '@/mock/assessmentData';
+import { PAST_ASSESSMENTS } from '@/mock/assessmentData';
 import logo from '@/assets/yellowowllogo.png';
-
-type SkillKey = keyof typeof SKILL_DESCRIPTIONS;
-const SKILL_KEYS: SkillKey[] = ['listening', 'reading', 'thinking', 'imagination'];
 
 type Assessment = (typeof PAST_ASSESSMENTS)[number];
 type Challenge = Assessment['challenges'][number];
@@ -120,7 +117,6 @@ export default function GuardianPage() {
 
   const bubblesRef = useRef<HTMLDivElement[]>([]);
   const sectionRefs = useRef<HTMLDivElement[]>([]);
-  const barRefs = useRef<HTMLDivElement[]>([]);
   const scoreBadgeRefs = useRef<HTMLSpanElement[]>([]);
 
   const handleLogout = () => {
