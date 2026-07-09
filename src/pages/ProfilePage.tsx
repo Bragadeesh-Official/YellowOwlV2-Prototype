@@ -24,6 +24,7 @@ export default function ProfilePage() {
   const headerRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
   const interestsRef = useRef<HTMLDivElement>(null);
+  const skillsRef = useRef<HTMLDivElement>(null);
   const guardianRef = useRef<HTMLDivElement>(null);
   const logoutRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +53,7 @@ export default function ProfilePage() {
         headerRef.current,
         formRef.current,
         interestsRef.current,
+        skillsRef.current,
         guardianRef.current,
         logoutRef.current,
       ].filter(Boolean) as HTMLElement[];
@@ -328,7 +330,101 @@ export default function ProfilePage() {
         )}
       </div>
 
-        {/* Guardian Section */}
+      {/* Super Skills Card */}
+      <div ref={skillsRef} className="owl-card mt-4 p-6 bg-white">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 border-b border-gray-100 pb-3">
+          <h2 className="text-lg font-bold text-gray-800">Your Super Skills</h2>
+          <p className="text-xs font-bold text-gray-400">Weekly progress over the last 3 weeks</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {[
+            {
+              title: "Digging in",
+              description: "Can spot what's relevant from what isn't",
+              color: "#8B5CF6",
+              history: [1, 2, 3],
+            },
+            {
+              title: "My ideas",
+              description: "Can come up with a few ideas",
+              color: "#0D9488",
+              history: [2, 2, 4],
+            },
+            {
+              title: "Looking closer",
+              description: "Can describe pros and cons of an option",
+              color: "#1E3A8A",
+              history: [1, 3, 3],
+            },
+            {
+              title: "Best choice",
+              description: "Can give a reason for a choice",
+              color: "#F97316",
+              history: [3, 4, 4],
+            },
+          ].map((skill, index) => {
+            const getY = (level: number) => {
+              if (level === 4) return 20;
+              if (level === 3) return 50;
+              if (level === 2) return 80;
+              return 110;
+            };
+
+            return (
+              <div key={index} className="flex flex-col">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: skill.color }} />
+                  <h3 className="text-sm font-bold text-gray-800">{skill.title}</h3>
+                </div>
+                <p className="text-[10px] font-extrabold mb-2" style={{ color: skill.color }}>
+                  {skill.description}
+                </p>
+
+                <div className="bg-gray-50/50 p-2 rounded-xl border border-gray-100/50">
+                  <svg viewBox="0 0 300 135" className="w-full h-auto">
+                    {/* Level Grid Lines */}
+                    <text x="5" y="23" className="text-[9px] font-black fill-gray-400">Super</text>
+                    <line x1="55" y1="20" x2="285" y2="20" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
+
+                    <text x="5" y="53" className="text-[9px] font-black fill-gray-400">Strong</text>
+                    <line x1="55" y1="50" x2="285" y2="50" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
+
+                    <text x="5" y="83" className="text-[9px] font-black fill-gray-400">Growing</text>
+                    <line x1="55" y1="80" x2="285" y2="80" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
+
+                    <text x="5" y="113" className="text-[9px] font-black fill-gray-400">Basic</text>
+                    <line x1="55" y1="110" x2="285" y2="110" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
+
+                    {/* Connecting Line */}
+                    <path
+                      d={`M 75 ${getY(skill.history[0])} L 175 ${getY(skill.history[1])} L 275 ${getY(skill.history[2])}`}
+                      fill="none"
+                      stroke={skill.color}
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={{ filter: `drop-shadow(0 2px 4px ${skill.color}30)` }}
+                    />
+
+                    {/* Dots */}
+                    <circle cx="75" cy={getY(skill.history[0])} r="5" fill="white" stroke={skill.color} strokeWidth="3" />
+                    <circle cx="175" cy={getY(skill.history[1])} r="5" fill="white" stroke={skill.color} strokeWidth="3" />
+                    <circle cx="275" cy={getY(skill.history[2])} r="5" fill="white" stroke={skill.color} strokeWidth="3" />
+
+                    {/* X-Axis labels */}
+                    <text x="75" y="128" textAnchor="middle" className="text-[9px] font-black fill-gray-500">Wk 1</text>
+                    <text x="175" y="128" textAnchor="middle" className="text-[9px] font-black fill-gray-500">Wk 2</text>
+                    <text x="275" y="128" textAnchor="middle" className="text-[9px] font-black fill-gray-500">Wk 3</text>
+                  </svg>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Guardian Section */}
         <div ref={guardianRef} className="mt-4">
         <button
           type="button"

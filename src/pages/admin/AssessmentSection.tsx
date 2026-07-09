@@ -455,6 +455,9 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
                       +
                     </button>
                   </div>
+                  <p style={{ fontSize: '13px', color: '#64748b', marginTop: '16px', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>ℹ️</span> Note: This update will reflect on next week's sessions.
+                  </p>
                 </div>
 
                 {/* Wizard Footer */}

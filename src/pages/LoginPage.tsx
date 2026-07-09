@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import gsap from 'gsap';
 import { useApp } from '@/context/AppContext';
 import { PROFILE_KEY, MOCK_CHILD_PROFILE } from '@/mock/userData';
@@ -30,6 +30,7 @@ type LoginMode = 'choose' | 'student-login-choice' | 'student-login-code' | 'stu
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { register } = useApp();
 
   const [mode, setMode] = useState<LoginMode>('choose');
@@ -41,6 +42,28 @@ export default function LoginPage() {
   // Child mobile login state
   const [mobileNumber, setMobileNumber] = useState('');
   const [mobileError, setMobileError] = useState('');
+
+  useEffect(() => {
+    if (location.state?.autoOpenMobileLogin) {
+      setMode('student-login-mobile');
+      if (location.state?.phone) {
+        setMobileNumber(location.state.phone);
+      }
+    } else if (localStorage.getItem('yellowowl_newly_registered') === 'true') {
+      setMode('student-login-mobile');
+      const savedProfile = localStorage.getItem(PROFILE_KEY);
+      if (savedProfile) {
+        try {
+          const p = JSON.parse(savedProfile);
+          if (p.guardianPhone) {
+            setMobileNumber(p.guardianPhone);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+  }, [location]);
 
   // Admin login state
   const [adminEmail, setAdminEmail] = useState('');
@@ -97,7 +120,7 @@ export default function LoginPage() {
       shakeCard();
       return;
     }
-    
+
     // Remove auths check on student login - accept any code!
     setChildError(false);
     const savedProfileStr = localStorage.getItem(PROFILE_KEY);
@@ -110,7 +133,15 @@ export default function LoginPage() {
     }
     localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
     register(p);
-    navigate('/image-password');
+
+    const isNewlyRegistered = localStorage.getItem('yellowowl_newly_registered') === 'true';
+    localStorage.removeItem('yellowowl_newly_registered');
+
+    if (isNewlyRegistered) {
+      navigate('/setup-password');
+    } else {
+      navigate('/image-password');
+    }
   };
 
   const handleChildMobileSubmit = (e: React.FormEvent) => {
@@ -135,7 +166,15 @@ export default function LoginPage() {
     }
     localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
     register(p);
-    navigate('/image-password');
+
+    const isNewlyRegistered = localStorage.getItem('yellowowl_newly_registered') === 'true';
+    localStorage.removeItem('yellowowl_newly_registered');
+
+    if (isNewlyRegistered) {
+      navigate('/setup-password');
+    } else {
+      navigate('/image-password');
+    }
   };
 
   const handleAdminSubmit = (e: React.FormEvent) => {
@@ -233,7 +272,7 @@ export default function LoginPage() {
                   }}
                   onClick={() => switchMode('student-login-choice')}
                 >
-                  Already Registered
+                  Login
                 </button>
 
                 <button
@@ -249,23 +288,12 @@ export default function LoginPage() {
                   }}
                   onClick={() => navigate('/register')}
                 >
-                  I'm new here! (Register)
+                  Sign up
                 </button>
-
-                <div className="text-center pt-2">
-                  <button
-                    type="button"
-                    onClick={() => switchMode('admin')}
-                    className="font-semibold text-xs text-gray-400 hover:text-yellow-600 underline underline-offset-2 transition-colors"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-                  >
-                    Admin Login
-                  </button>
-                </div>
               </div>
             )}
 
-            {/* ── Student Login Choice ── */}
+            {/* ── Login Choice ── */}
             {mode === 'student-login-choice' && (
               <div className="flex flex-col gap-5 animate-pop-in">
                 <div className="mb-2">
@@ -286,23 +314,39 @@ export default function LoginPage() {
                   }}
                   onClick={() => switchMode('student-login-code')}
                 >
-                  Login with Code
+                  Roll No
                 </button>
 
                 <button
                   type="button"
                   className="w-full text-base py-4 font-black rounded-2xl transition-all hover:scale-[1.02] active:scale-95"
                   style={{
-                    backgroundColor: 'white',
-                    border: '2px solid #FFEA11',
-                    color: '#B8A800',
-                    boxShadow: '0 4px 14px rgba(255, 234, 17, 0.12)',
+                    backgroundColor: '#FFEA11',
+                    border: 'none',
+                    color: '#1a1a1a',
+                    boxShadow: '0 4px 14px rgba(255, 234, 17, 0.35)',
                     cursor: 'pointer',
                     fontFamily: 'Andika, system-ui, sans-serif',
                   }}
                   onClick={() => switchMode('student-login-mobile')}
                 >
-                  Login with Mobile Number
+                  Phone Number
+                </button>
+
+                <button
+                  type="button"
+                  className="w-full text-base py-4 font-black rounded-2xl transition-all hover:scale-[1.02] active:scale-95"
+                  style={{
+                    backgroundColor: '#FFEA11',
+                    border: 'none',
+                    color: '#1a1a1a',
+                    boxShadow: '0 4px 14px rgba(255, 234, 17, 0.35)',
+                    cursor: 'pointer',
+                    fontFamily: 'Andika, system-ui, sans-serif',
+                  }}
+                  onClick={() => switchMode('admin')}
+                >
+                  Email
                 </button>
 
                 <button
@@ -316,19 +360,19 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* ── Student Login Code ── */}
+            {/* ── Student Login Roll No ── */}
             {mode === 'student-login-code' && (
               <form onSubmit={handleChildCodeSubmit} className="flex flex-col gap-5 animate-pop-in">
                 <div>
-                  <h2 className="text-2xl font-black text-gray-800 mb-1">Enter your code</h2>
-                  <p className="text-gray-400 text-sm">Type in the secret code from your teacher or parent.</p>
+                  <h2 className="text-2xl font-black text-gray-800 mb-1">Enter your Roll No</h2>
+                  <p className="text-gray-400 text-sm">Type in the roll no from your teacher or parent.</p>
                 </div>
                 <div>
                   <input
                     type="text"
                     value={inviteCode}
                     onChange={(e) => { setInviteCode(e.target.value); setChildError(false); }}
-                    placeholder="Your secret code..."
+                    placeholder="Your roll no..."
                     className="w-full border-2 rounded-xl p-3 text-lg outline-none transition-all focus:border-[#FFEA11]"
                     style={{
                       borderColor: childError ? '#ef4444' : '#FFEA11',
@@ -339,7 +383,7 @@ export default function LoginPage() {
                   />
                   {childError && (
                     <p className="mt-2 text-red-500 text-sm font-semibold">
-                      Please enter a secret code.
+                      Please enter a roll no.
                     </p>
                   )}
                 </div>
@@ -360,19 +404,19 @@ export default function LoginPage() {
               </form>
             )}
 
-            {/* ── Student Login Mobile ── */}
+            {/* ── Student Login Phone Number ── */}
             {mode === 'student-login-mobile' && (
               <form onSubmit={handleChildMobileSubmit} className="flex flex-col gap-5 animate-pop-in">
                 <div>
-                  <h2 className="text-2xl font-black text-gray-800 mb-1">Enter Mobile Number</h2>
-                  <p className="text-gray-400 text-sm">Type in your guardian's mobile number.</p>
+                  <h2 className="text-2xl font-black text-gray-800 mb-1">Enter Phone Number</h2>
+                  <p className="text-gray-400 text-sm">Type in your guardian's phone number.</p>
                 </div>
                 <div>
                   <input
                     type="tel"
                     value={mobileNumber}
                     onChange={(e) => { setMobileNumber(e.target.value.replace(/\D/g, '')); setMobileError(''); }}
-                    placeholder="10-digit mobile number"
+                    placeholder="10-digit phone number"
                     maxLength={10}
                     className="w-full border-2 rounded-xl p-3 text-lg outline-none transition-all focus:border-[#FFEA11]"
                     style={{
@@ -405,12 +449,12 @@ export default function LoginPage() {
               </form>
             )}
 
-            {/* ── Admin login ── */}
+            {/* ── Email Password login ── */}
             {mode === 'admin' && (
               <form onSubmit={handleAdminSubmit} className="flex flex-col gap-4 animate-pop-in">
                 <div>
-                  <h2 className="text-2xl font-black text-gray-800 mb-1">Admin Sign In</h2>
-                  <p className="text-gray-400 text-sm">Restricted access — admins only.</p>
+                  <h2 className="text-2xl font-black text-gray-800 mb-1">Email Password Login</h2>
+                  <p className="text-gray-400 text-sm">Enter your credentials to continue.</p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-600 mb-1.5">Email</label>
@@ -418,7 +462,7 @@ export default function LoginPage() {
                     type="email"
                     value={adminEmail}
                     onChange={(e) => { setAdminEmail(e.target.value); setAdminError(''); }}
-                    placeholder="admin@yellowowl.com"
+                    placeholder="Enter email"
                     className="w-full border-2 rounded-xl p-3 text-base outline-none transition-all focus:border-[#FFEA11]"
                     style={{
                       borderColor: adminError ? '#ef4444' : '#d1d5db',
@@ -470,15 +514,14 @@ export default function LoginPage() {
                 </div>
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-xl font-bold text-white transition-all mt-1 hover:-translate-y-0.5"
-                  style={{ background: '#B8A800', boxShadow: '0 6px 20px rgba(184,168,0,0.25)', border: 'none', cursor: 'pointer' }}
+                  className="btn-primary w-full"
                 >
                   Sign In →
                 </button>
                 <button
                   type="button"
-                  onClick={() => switchMode('choose')}
-                  className="font-bold text-sm text-gray-400 hover:text-yellow-600 transition-colors text-center"
+                  onClick={() => switchMode('student-login-choice')}
+                  className="font-bold text-sm text-gray-400 hover:text-yellow-600 transition-colors text-center animate-none mt-2"
                   style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                 >
                   ← Back

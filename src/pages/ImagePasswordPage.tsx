@@ -2,8 +2,33 @@ import { useRef, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { useApp } from '@/context/AppContext';
-import { MOCK_ENVIRONMENTS, MOCK_ANIMALS } from '@/mock/userData';
-import logo from '@/assets/yellowowllogo.png';
+
+// Environment Images
+import ForestImg from '@/assets/environments/Forest.png';
+import OceanImg from '@/assets/environments/Ocean.png';
+import PolarImg from '@/assets/environments/Polar.png';
+import SkyImg from '@/assets/environments/Sky.png';
+
+// Animal Images
+import ForestBearPass from '@/assets/animals/Forest_BearPass.png';
+import ForestDeerPass from '@/assets/animals/Forest_DeerPass.png';
+import ForestElephantPass from '@/assets/animals/Forest_ElephantPass.png';
+import ForestTigerPass from '@/assets/animals/Forest_TigerPass.png';
+
+import OceanDolphinPass from '@/assets/animals/Ocean_DolphinPass.png';
+import OceanFishPass from '@/assets/animals/Ocean_FishPass.png';
+import OceanOctopusPass from '@/assets/animals/Ocean_OctopusPass.png';
+import OceanSeaTurtlePass from '@/assets/animals/Ocean_SeaTurtlePass.png';
+
+import PolarPenguinPass from '@/assets/animals/Polar_PenguinPass.png';
+import PolarSnowBearPass from '@/assets/animals/Polar_SnowBearPass.png';
+import PolarWhalePass from '@/assets/animals/Polar_WhalePass.png';
+import PolarWolfPass from '@/assets/animals/Polar_WolfPass.png';
+
+import SkyBeePass from '@/assets/animals/Sky_BeePass.png';
+import SkyButterflyPass from '@/assets/animals/Sky_ButterflyPass.png';
+import SkyEaglePass from '@/assets/animals/Sky_EaglePass.png';
+import SkyParrotPass from '@/assets/animals/Sky_ParrotPass.png';
 
 const BUBBLES = [
   { size: 120, top: '6%',    left: '3%',   bg: '#2AD5B4' },
@@ -11,6 +36,40 @@ const BUBBLES = [
   { size: 140, bottom: '10%', left: '2%',  bg: '#FFEA11' },
   { size: 90,  bottom: '18%', right: '5%', bg: '#2AD5B4' },
 ];
+
+const ENVIRONMENTS = [
+  { id: 'polar', label: 'Polar', image: PolarImg, description: 'Cold snowy lands!' },
+  { id: 'ocean', label: 'Ocean', image: OceanImg, description: 'Deep blue waters!' },
+  { id: 'forest', label: 'Forest', image: ForestImg, description: 'Tall green trees!' },
+  { id: 'sky', label: 'Sky', image: SkyImg, description: 'Fluffy clouds!' },
+];
+
+const ANIMALS_BY_ENV: Record<string, { id: string; name: string; image: string }[]> = {
+  polar: [
+    { id: 'penguin', name: 'Penguin', image: PolarPenguinPass },
+    { id: 'snowbear', name: 'Polar Bear', image: PolarSnowBearPass },
+    { id: 'wolf', name: 'Arctic Wolf', image: PolarWolfPass },
+    { id: 'whale', name: 'Whale', image: PolarWhalePass },
+  ],
+  ocean: [
+    { id: 'dolphin', name: 'Dolphin', image: OceanDolphinPass },
+    { id: 'turtle', name: 'Sea Turtle', image: OceanSeaTurtlePass },
+    { id: 'octopus', name: 'Octopus', image: OceanOctopusPass },
+    { id: 'fish', name: 'Tropical Fish', image: OceanFishPass },
+  ],
+  forest: [
+    { id: 'bear', name: 'Bear', image: ForestBearPass },
+    { id: 'deer', name: 'Deer', image: ForestDeerPass },
+    { id: 'tiger', name: 'Tiger', image: ForestTigerPass },
+    { id: 'elephant', name: 'Elephant', image: ForestElephantPass },
+  ],
+  sky: [
+    { id: 'eagle', name: 'Eagle', image: SkyEaglePass },
+    { id: 'parrot', name: 'Parrot', image: SkyParrotPass },
+    { id: 'butterfly', name: 'Butterfly', image: SkyButterflyPass },
+    { id: 'bee', name: 'Bee', image: SkyBeePass },
+  ],
+};
 
 export default function ImagePasswordPage() {
   const navigate = useNavigate();
@@ -102,7 +161,6 @@ export default function ImagePasswordPage() {
   const goToStep2 = () => {
     if (!selectedEnv) return;
 
-    // Slide step 1 out left, step 2 in from right
     const s1 = step1Ref.current;
     const s2 = step2Ref.current;
 
@@ -162,7 +220,6 @@ export default function ImagePasswordPage() {
       updateProfile({ passwordEnv: selectedEnv, passwordAnimal: selectedAnimal });
       navigate('/interests');
     } else {
-      // No auth, for now - accept any selected env and animal
       setErrorMsg('');
       updateProfile({ passwordEnv: selectedEnv, passwordAnimal: selectedAnimal });
       login();
@@ -170,14 +227,13 @@ export default function ImagePasswordPage() {
     }
   };
 
-  const animals = selectedEnv ? (MOCK_ANIMALS[selectedEnv] ?? []) : [];
+  const animals = selectedEnv ? (ANIMALS_BY_ENV[selectedEnv] ?? []) : [];
 
   return (
     <div
       className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden py-10"
       style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' }}
     >
-      {/* Floating Bubbles */}
       {BUBBLES.map((b, i) => (
         <div
           key={i}
@@ -199,19 +255,18 @@ export default function ImagePasswordPage() {
       {/* Card */}
       <div
         ref={cardRef}
-        className="relative z-10 bg-white rounded-3xl shadow-lg p-8 mx-4 w-full max-w-2xl overflow-hidden"
+        className="relative z-10 bg-white rounded-3xl shadow-lg p-6 mx-4 w-full max-w-3xl overflow-hidden animate-pop-in"
       >
         {/* Header */}
-        <div className="flex flex-col items-center mb-6">
-          <img src={logo} alt="Yellow Owl Logo" style={{ height: 80, objectFit: 'contain', marginBottom: 12 }} />
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            {isSetup ? 'Choose Your Secret Password Picture! 🔐' : 'Enter Your Secret Password Picture! 🔐'}
+        <div className="flex flex-col items-center mb-4">
+          <h1 className="text-xl sm:text-2xl font-black text-gray-800 mb-1 text-center">
+            {isSetup ? 'Choose Your Secret Password Picture!' : 'Enter Your Secret Password Picture!'}
           </h1>
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-500 font-bold text-xs text-center">
             {isSetup ? "Pick your magic animal — you'll need it to login next time!" : 'Tap your secret animal to verify your password!'}
           </p>
           {errorMsg && (
-            <p className="mt-3 text-red-500 font-bold text-sm bg-red-50 px-4 py-2 rounded-xl border border-red-200">
+            <p className="mt-2 text-red-500 font-bold text-xs bg-red-50 px-3 py-1.5 rounded-xl border border-red-200">
               {errorMsg}
             </p>
           )}
@@ -220,32 +275,45 @@ export default function ImagePasswordPage() {
         {/* Step 1: Environment Selection */}
         {step === 1 && (
           <div ref={step1Ref}>
-            <h2 className="text-lg font-bold text-gray-700 mb-4 text-center">
-              Step 1: Pick your world! 🌍
+            <h2 className="text-base font-bold text-teal-600 mb-4 text-center">
+              Step 1: Pick your world!
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-              {MOCK_ENVIRONMENTS.map((env, idx) => (
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {ENVIRONMENTS.map((env, idx) => (
                 <div
                   key={env.id}
                   ref={(el) => { envCardRefs.current[idx] = el; }}
-                  className={`choice-card flex flex-col items-center p-4 cursor-pointer rounded-2xl${selectedEnv === env.id ? ' selected' : ''}`}
-                  style={{ backgroundColor: env.bg }}
+                  className="choice-card flex flex-col items-center p-3 cursor-pointer rounded-2xl transition-all"
+                  style={{
+                    borderWidth: '4px',
+                    borderStyle: 'solid',
+                    borderColor: selectedEnv === env.id ? '#FFEA11' : '#E2E8F0',
+                    backgroundColor: selectedEnv === env.id ? '#FFFDE7' : '#FFFFFF',
+                    transform: selectedEnv === env.id ? 'scale(1.02)' : undefined,
+                    boxShadow: selectedEnv === env.id ? '0 8px 20px rgba(255, 234, 17, 0.35)' : undefined,
+                  }}
                   onClick={() => handleEnvSelect(env.id, idx)}
                 >
-                  <span className="text-5xl mb-2 leading-none">{env.emoji}</span>
-                  <span className="font-bold text-gray-800 text-sm">{env.label}</span>
-                  <span className="text-xs text-gray-600 text-center mt-1">{env.description}</span>
+                  <div className="w-full aspect-[16/10] rounded-xl overflow-hidden mb-2 bg-gray-100 shadow-inner">
+                    <img
+                      src={env.image}
+                      alt={env.label}
+                      className="w-full h-full object-cover select-none"
+                    />
+                  </div>
+                  <span className="font-black text-gray-800 text-base">{env.label}</span>
+                  <span className="text-[10px] font-black text-gray-400 text-center mt-0.5">{env.description}</span>
                 </div>
               ))}
             </div>
 
             <div className="flex justify-center">
               <button
-                className="btn-primary"
+                className="btn-primary text-sm px-6 py-2.5"
                 disabled={!selectedEnv}
                 onClick={goToStep2}
               >
-                Next: Pick your animal! 🐾
+                Next: Pick your animal!
               </button>
             </div>
           </div>
@@ -258,36 +326,50 @@ export default function ImagePasswordPage() {
               <button
                 type="button"
                 onClick={goToStep1}
-                className="btn-back"
+                className="btn-back text-xs px-2.5 py-1"
               >
-                ← Back
+                Back
               </button>
-              <h2 className="text-lg font-bold text-gray-700">
-                Step 2: Pick your magical animal! 🐾
+              <h2 className="text-base font-bold text-teal-600">
+                Step 2: Pick your magical animal!
               </h2>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 gap-4 mb-6">
               {animals.map((animal, idx) => (
                 <div
                   key={animal.id}
                   ref={(el) => { animalCardRefs.current[idx] = el; }}
-                  className={`choice-card flex flex-col items-center p-5 cursor-pointer rounded-2xl bg-white shadow${selectedAnimal === animal.id ? ' selected' : ''}`}
+                  className="choice-card flex flex-col items-center p-3 cursor-pointer rounded-2xl transition-all"
+                  style={{
+                    borderWidth: '4px',
+                    borderStyle: 'solid',
+                    borderColor: selectedAnimal === animal.id ? '#FFEA11' : '#E2E8F0',
+                    backgroundColor: selectedAnimal === animal.id ? '#FFFDE7' : '#FFFFFF',
+                    transform: selectedAnimal === animal.id ? 'scale(1.02)' : undefined,
+                    boxShadow: selectedAnimal === animal.id ? '0 8px 20px rgba(255, 234, 17, 0.35)' : undefined,
+                  }}
                   onClick={() => handleAnimalSelect(animal.id, idx)}
                 >
-                  <span className="text-6xl mb-2 leading-none">{animal.emoji}</span>
-                  <span className="font-bold text-gray-800 text-sm">{animal.name}</span>
+                  <div className="w-full aspect-[16/10] rounded-xl overflow-hidden mb-2 bg-gray-50 flex items-center justify-center p-2 shadow-inner">
+                    <img
+                      src={animal.image}
+                      alt={animal.name}
+                      className="max-w-full max-h-full object-contain rounded-lg select-none"
+                    />
+                  </div>
+                  <span className="font-black text-gray-800 text-base text-center">{animal.name}</span>
                 </div>
               ))}
             </div>
 
             <div className="flex justify-center">
               <button
-                className="btn-primary"
+                className="btn-primary text-sm px-6 py-2.5"
                 disabled={!selectedAnimal}
                 onClick={handleConfirm}
               >
-                Lock it in! 🔒
+                Lock it in!
               </button>
             </div>
           </div>

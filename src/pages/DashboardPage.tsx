@@ -20,11 +20,9 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { profile, isLoggedIn, assessmentProgress, saveAssessmentProgress, logout } = useApp();
 
-  const pageRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const assessCardRef = useRef<HTMLDivElement>(null);
-  const skillsSectionRef = useRef<HTMLDivElement>(null);
   const bubblesRef = useRef<HTMLDivElement[]>([]);
   const tourCardRef = useRef<HTMLDivElement>(null);
 
@@ -155,8 +153,9 @@ export default function DashboardPage() {
           const tooltipWidth = Math.min(320, window.innerWidth - 32);
           let targetLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
           targetLeft = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, targetLeft));
+          const tooltipHeight = tourCardRef.current ? tourCardRef.current.offsetHeight : 160;
           setTooltipPos({
-            top: rect.top + window.scrollY - 16,
+            top: rect.top + window.scrollY - tooltipHeight - 16,
             left: targetLeft,
             arrowLeft: (rect.left + rect.width / 2) - targetLeft,
             arrowDirection: 'down',
@@ -166,9 +165,11 @@ export default function DashboardPage() {
     };
 
     updatePosition();
+    const t = setTimeout(updatePosition, 50);
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition);
     return () => {
+      clearTimeout(t);
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition);
     };
@@ -199,8 +200,6 @@ export default function DashboardPage() {
 
   const timeLeftSeconds = typeof progress?.timeLeft === 'number' ? progress.timeLeft : 900;
   const timeLeftMinutes = Math.ceil(timeLeftSeconds / 60);
-  const elapsedSeconds = 900 - timeLeftSeconds;
-  const timePercent = Math.max(0, Math.min(100, (elapsedSeconds / 900) * 100));
   const remainingPercent = Math.max(0, Math.min(100, (timeLeftSeconds / 900) * 100));
   const isChallengeEnded = !!progress?.completed || timeLeftSeconds <= 0;
 
@@ -560,41 +559,41 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Super Skills Graph Section */}
+        {/* Super Skills Card */}
         <div
           id="tour-skills-box"
-          className="mt-10"
+          className="owl-card mt-10 p-6 bg-white"
           style={{ position: 'relative', zIndex: tourStep === 3 ? 9999 : undefined }}
         >
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 border-b border-gray-100 pb-3">
             <h2 className="text-xl font-black text-gray-800">Your Super Skills</h2>
             <p className="text-xs font-bold text-gray-500">Weekly progress over the last 3 weeks</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {[
               {
                 title: "Digging in",
                 description: "Can spot what's relevant from what isn't",
-                color: "#8B5CF6", // purple
+                color: "#8B5CF6",
                 history: [1, 2, 3],
               },
               {
                 title: "My ideas",
                 description: "Can come up with a few ideas",
-                color: "#0D9488", // teal
+                color: "#0D9488",
                 history: [2, 2, 4],
               },
               {
                 title: "Looking closer",
                 description: "Can describe pros and cons of an option",
-                color: "#1E3A8A", // dark blue
+                color: "#1E3A8A",
                 history: [1, 3, 3],
               },
               {
                 title: "Best choice",
                 description: "Can give a reason for a choice",
-                color: "#F97316", // orange
+                color: "#F97316",
                 history: [3, 4, 4],
               },
             ].map((skill, index) => {
@@ -606,23 +605,16 @@ export default function DashboardPage() {
               };
 
               return (
-                <div
-                  key={index}
-                  className="bg-white p-6 shadow-sm transition-all hover:shadow-md"
-                  style={{
-                    borderTop: `6px solid ${skill.color}`,
-                    borderLeft: `6px solid ${skill.color}`,
-                    borderRight: '1.5px solid #F3F4F6',
-                    borderBottom: '1.5px solid #F3F4F6',
-                    borderRadius: '24px',
-                  }}
-                >
-                  <h3 className="text-lg font-black text-gray-800 mb-1">{skill.title}</h3>
-                  <p className="text-xs font-extrabold mb-4" style={{ color: skill.color }}>
+                <div key={index} className="flex flex-col">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: skill.color }} />
+                    <h3 className="text-sm font-bold text-gray-800">{skill.title}</h3>
+                  </div>
+                  <p className="text-[10px] font-extrabold mb-2" style={{ color: skill.color }}>
                     {skill.description}
                   </p>
 
-                  <div className="bg-gray-50/50 p-2.5 rounded-2xl border border-gray-100/50">
+                  <div className="bg-gray-50/50 p-2 rounded-xl border border-gray-100/50">
                     <svg viewBox="0 0 300 135" className="w-full h-auto">
                       {/* Level Grid Lines */}
                       <text x="5" y="23" className="text-[9px] font-black fill-gray-400">Super</text>
@@ -748,11 +740,22 @@ export default function DashboardPage() {
           >
             {/* Arrow indicator */}
             <div
-              className="absolute w-4 h-4 bg-white border-t-4 border-l-4 border-[#FFEA11] rotate-45"
-              style={{
-                top: -10,
-                left: tooltipPos.arrowLeft - 8,
-              }}
+              className="absolute w-4 h-4 bg-white rotate-45"
+              style={
+                tooltipPos.arrowDirection === 'up'
+                  ? {
+                    top: -10,
+                    left: tooltipPos.arrowLeft - 8,
+                    borderTop: '4px solid #FFEA11',
+                    borderLeft: '4px solid #FFEA11',
+                  }
+                  : {
+                    bottom: -10,
+                    left: tooltipPos.arrowLeft - 8,
+                    borderBottom: '4px solid #FFEA11',
+                    borderRight: '4px solid #FFEA11',
+                  }
+              }
             />
 
             {/* Tooltip Content */}
@@ -774,8 +777,8 @@ export default function DashboardPage() {
                 {tourStep === 1
                   ? "This is the Weekly Box where your weekly challenge is displayed! Solve it before time runs out!"
                   : tourStep === 2
-                  ? 'This is where you can explore your stats, view your level, and customize your avatar!'
-                  : 'These charts show how your thinking skills grow each week — like Digging In, My Ideas, and Best Choice. Keep practicing to level them up! 🚀'}
+                    ? 'This shows your name and level! Click on your avatar here to view your profile, edit your interests, and track your progress!'
+                    : 'These charts show how your thinking skills grow each week — like Digging In, My Ideas, and Best Choice. Keep practicing to level them up!'}
               </p>
 
               <div className="flex items-center justify-between">
@@ -805,7 +808,7 @@ export default function DashboardPage() {
                     }}
                     className="bg-[#FFEA11] hover:bg-[#F3E000] text-gray-800 text-xs font-black px-3.5 py-1.5 rounded-xl shadow-sm hover:scale-105 active:scale-95 transition-all cursor-pointer"
                   >
-                    {tourStep < 3 ? 'Next ➔' : 'Got it! 🎉'}
+                    {tourStep < 3 ? 'Next ➔' : 'Got it!'}
                   </button>
                 </div>
               </div>

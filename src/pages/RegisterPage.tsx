@@ -12,7 +12,6 @@ const BUBBLES = [
   { size: 55, top: '45%', left: '48%', bg: '#2AD5B4' },
 ];
 
-const STEPS = ['Name', 'Details', 'Guardian', 'Terms'];
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -39,14 +38,6 @@ export default function RegisterPage() {
   const [agreed, setAgreed] = useState(false);
   const [phoneError, setPhoneError] = useState('');
   const [emailError, setEmailError] = useState('');
-
-  // Derive active step for the progress indicator (1-indexed)
-  const activeStep = (() => {
-    if (!name.trim()) return 1;
-    if (!age) return 2;
-    if (guardianPhone.length < 10) return 3;
-    return 4;
-  })();
 
   const cardRef = useRef<HTMLDivElement>(null);
   const owlRef = useRef<HTMLDivElement>(null);

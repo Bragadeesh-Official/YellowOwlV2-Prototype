@@ -50,16 +50,16 @@ function ChallengeDetail({ ch }: { ch: Challenge }) {
 
       {'mcqScore' in ch && 'mcqTotal' in ch && (
         <p style={{ fontSize: 13, color: '#6b7280', margin: '2px 0' }}>
-          MCQ: {ch.mcqScore}/{ch.mcqTotal} correct
+          MCQ: Completed 🎯
           {'twistCorrect' in ch && (
             <span
               style={{
                 marginLeft: 8,
                 fontWeight: 700,
-                color: ch.twistCorrect ? '#16a34a' : '#dc2626',
+                color: '#8b5cf6',
               }}
             >
-              {ch.twistCorrect ? '+ Twist ✓' : '— Twist ✗'}
+              + Twist Completed 🌀
             </span>
           )}
         </p>

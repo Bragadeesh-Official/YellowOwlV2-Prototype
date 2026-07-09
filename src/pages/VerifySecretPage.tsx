@@ -55,22 +55,24 @@ export default function VerifySecretPage() {
     return () => ctx.revert();
   }, []);
 
+  useEffect(() => {
+    if (success && successRef.current) {
+      gsap.fromTo(successRef.current,
+        { scale: 0.6, opacity: 0, y: 40 },
+        { scale: 1, opacity: 1, y: 0, duration: 0.5, ease: 'back.out(1.7)' }
+      );
+    }
+  }, [success]);
+
   const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!code.trim()) {
-      setError('Please enter your secret code.');
+      setError('Please enter your OTP.');
       return;
     }
 
     setSuccess(true);
-    if (successRef.current) {
-      gsap.fromTo(successRef.current,
-        { scale: 0.7, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.4, ease: 'back.out(1.7)' }
-      );
-    }
-    setTimeout(() => navigate('/setup-password'), 1200);
   };
 
   return (
@@ -113,79 +115,130 @@ export default function VerifySecretPage() {
           <div ref={owlRef}>
             <img src={logo} alt="Yellow Owl" style={{ height: 72, objectFit: 'contain', marginBottom: 10 }} />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">Enter Your Secret Code</h1>
+          <h1 className="text-2xl font-bold text-gray-800 mb-1">Verify OTP</h1>
           <p className="text-gray-500 text-sm text-center leading-relaxed">
-            Your guardian received a{' '}
-            <span className="font-bold" style={{ color: '#2AD5B4' }}>secret code</span> on WhatsApp
+            An OTP has been sent to your guardian's registered WhatsApp and Email.
           </p>
-          <p className="text-gray-700 text-sm font-bold mt-1">+91 {maskedPhone}</p>
+          {profile?.guardianPhone && (
+            <p className="text-gray-700 text-sm font-bold mt-2">WhatsApp: +91 {maskedPhone}</p>
+          )}
+          {profile?.guardianEmail && (
+            <p className="text-gray-500 text-xs font-semibold mt-0.5">Email: {profile.guardianEmail}</p>
+          )}
         </div>
 
-        {/* WhatsApp hint */}
+        {/* WhatsApp & Email notification hint */}
         <div
-          className="flex items-center gap-2 rounded-xl px-4 py-3 mb-6 text-sm"
+          className="flex items-center gap-3 rounded-xl px-4 py-3 mb-6 text-sm"
           style={{ backgroundColor: '#f0fdf9', border: '1.5px solid #2AD5B4' }}
         >
-          <span style={{ fontSize: 22 }}>💬</span>
+          <span style={{ fontSize: 22 }}>✉️</span>
           <span className="text-gray-600">
-            Look for a message from <span className="font-bold text-gray-800">Yellow Owl</span> on WhatsApp and type the code below.
+            Check your guardian's <span className="font-bold text-gray-800">WhatsApp</span> and <span className="font-bold text-gray-800">Email</span> inbox for the OTP.
           </span>
         </div>
 
-        {!success ? (
-          <form onSubmit={handleVerify} className="flex flex-col gap-4">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                Secret Code
-              </label>
-              <input
-                ref={inputRef}
-                type="text"
-                value={code}
-                onChange={(e) => { setCode(e.target.value); setError(''); }}
-                placeholder="Enter your secret code"
-                autoFocus
-                style={{
-                  width: '100%',
-                  border: `2px solid ${error ? '#ef4444' : '#2AD5B4'}`,
-                  borderRadius: 12,
-                  padding: '14px 16px',
-                  fontSize: '1.1rem',
-                  fontFamily: 'Andika, system-ui, sans-serif',
-                  fontWeight: 700,
-                  letterSpacing: '0.12em',
-                  outline: 'none',
-                  color: '#1a1a1a',
-                  background: '#fff',
-                  transition: 'border-color 0.2s, box-shadow 0.2s',
-                  textAlign: 'center',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#FFEA11';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,234,17,0.3)';
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = error ? '#ef4444' : '#2AD5B4';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-              {error && (
-                <p className="mt-2 text-red-500 text-sm font-semibold text-center">{error}</p>
-              )}
-            </div>
-
-            <button type="submit" className="btn-primary w-full">
-              Verify & Continue
-            </button>
-          </form>
-        ) : (
-          <div ref={successRef} className="flex flex-col items-center py-6">
-            <div style={{ fontSize: 64 }}>🎉</div>
-            <p className="text-xl font-bold mt-3" style={{ color: '#2AD5B4' }}>Code verified!</p>
-            <p className="text-gray-500 text-sm mt-1">Taking you to the next step…</p>
+        <form onSubmit={handleVerify} className="flex flex-col gap-4">
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              Enter OTP
+            </label>
+            <input
+              ref={inputRef}
+              type="text"
+              value={code}
+              onChange={(e) => { setCode(e.target.value); setError(''); }}
+              placeholder="Enter your OTP"
+              autoFocus
+              style={{
+                width: '100%',
+                border: `2px solid ${error ? '#ef4444' : '#2AD5B4'}`,
+                borderRadius: 12,
+                padding: '14px 16px',
+                fontSize: '1.1rem',
+                fontFamily: 'Andika, system-ui, sans-serif',
+                fontWeight: 700,
+                letterSpacing: '0.12em',
+                outline: 'none',
+                color: '#1a1a1a',
+                background: '#fff',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+                textAlign: 'center',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#FFEA11';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,234,17,0.3)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = error ? '#ef4444' : '#2AD5B4';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            />
+            {error && (
+              <p className="mt-2 text-red-500 text-sm font-semibold text-center">{error}</p>
+            )}
           </div>
-        )}
+
+          <button type="submit" className="btn-primary w-full">
+            Verify & Continue
+          </button>
+        </form>
       </div>
+
+      {/* Success Dialog Box Modal */}
+      {success && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: 16,
+          }}
+        >
+          <div
+            ref={successRef}
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: 24,
+              padding: '32px 24px',
+              maxWidth: 400,
+              width: '100%',
+              textAlign: 'center',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              border: '3px solid #2AD5B4',
+            }}
+          >
+            <div style={{ fontSize: 64, marginBottom: 16 }}>🎉</div>
+            <h3 style={{ fontSize: 22, fontWeight: 900, color: '#1e293b', marginBottom: 12, fontFamily: 'Andika, system-ui, sans-serif' }}>
+              OTP Verified!
+            </h3>
+            <p style={{ fontSize: 15, color: '#64748b', marginBottom: 24, lineHeight: 1.5 }}>
+              Your account has been created. Let's start with login!
+            </p>
+            <button
+              onClick={() => navigate('/login', { state: { autoOpenMobileLogin: true, phone: profile?.guardianPhone } })}
+              className="w-full text-base py-3.5 font-black rounded-2xl transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+              style={{
+                backgroundColor: '#FFEA11',
+                border: 'none',
+                color: '#1a1a1a',
+                boxShadow: '0 4px 14px rgba(255, 234, 17, 0.35)',
+                fontFamily: 'Andika, system-ui, sans-serif',
+              }}
+            >
+              Let's start with login ➔
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

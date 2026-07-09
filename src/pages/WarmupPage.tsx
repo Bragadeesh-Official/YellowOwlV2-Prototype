@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { useApp } from '@/context/AppContext';
-import { MOCK_WARMUP_QUESTIONS } from '@/mock/userData';
+import { JUNIOR_WARMUP, SENIOR_WARMUP } from '@/mock/userData';
 import logo from '@/assets/yellowowllogo.png';
 
 const BUBBLES = [
@@ -14,23 +14,27 @@ const BUBBLES = [
 
 type AnswerState = {
   selectedOption: number | null;
-  isCorrect: boolean;
 };
 
 export default function WarmupPage() {
   const navigate = useNavigate();
-  const { login } = useApp();
+  const { login, profile } = useApp();
+
+  // Dynamically choose track based on student age (Default: Junior)
+  const isSenior = profile && profile.age >= 12;
+  const warmupTrack = isSenior ? SENIOR_WARMUP : JUNIOR_WARMUP;
+  const questions = warmupTrack.questions;
+  const totalQuestions = questions.length;
 
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<AnswerState[]>(
-    MOCK_WARMUP_QUESTIONS.map(() => ({ selectedOption: null, isCorrect: false }))
+  const [answers, setAnswers] = useState<AnswerState[]>(() =>
+    Array(totalQuestions).fill(null).map(() => ({ selectedOption: null }))
   );
   const [showCelebration, setShowCelebration] = useState(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const bubblesRef = useRef<HTMLDivElement[]>([]);
   const questionPanelRef = useRef<HTMLDivElement>(null);
-  const explanationRef = useRef<HTMLDivElement>(null);
   const celebrationRef = useRef<HTMLDivElement>(null);
   const celebrationIconRef = useRef<HTMLDivElement>(null);
 
@@ -115,29 +119,15 @@ export default function WarmupPage() {
   }, [showCelebration]);
 
   const currentAnswer = answers[currentQuestion];
-  const hasAnswered = currentAnswer.selectedOption !== null;
-  const question = MOCK_WARMUP_QUESTIONS[currentQuestion];
-  const totalQuestions = MOCK_WARMUP_QUESTIONS.length;
+  const hasAnswered = currentAnswer?.selectedOption !== null;
+  const question = questions[currentQuestion];
   const progress = ((currentQuestion + 1) / totalQuestions) * 100;
 
   const handleOptionSelect = (optionIdx: number) => {
-    if (hasAnswered) return; // already answered this question
-
-    const isCorrect = optionIdx === question.correct;
     const updated = answers.map((a, i) =>
-      i === currentQuestion ? { selectedOption: optionIdx, isCorrect } : a
+      i === currentQuestion ? { selectedOption: optionIdx } : a
     );
     setAnswers(updated);
-
-    // Slide explanation in
-    if (explanationRef.current) {
-      gsap.from(explanationRef.current, {
-        height: 0,
-        opacity: 0,
-        duration: 0.35,
-        ease: 'power2.out',
-      });
-    }
   };
 
   const handleNext = () => {
@@ -170,7 +160,6 @@ export default function WarmupPage() {
         setCurrentQuestion((q) => q + 1);
       });
     } else {
-      // Show celebration
       doTransition(() => {
         setShowCelebration(true);
       });
@@ -183,31 +172,25 @@ export default function WarmupPage() {
   };
 
   const getOptionStyle = (optionIdx: number): React.CSSProperties => {
-    if (!hasAnswered) {
-      return {
-        border: '2px solid #e5e7eb',
-        background: '#fff',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-      };
-    }
+    const isSelected = optionIdx === currentAnswer.selectedOption;
 
-    if (optionIdx === currentAnswer.selectedOption) {
+    if (isSelected) {
       return {
-        border: '2px solid #FFEA11',
+        border: '2.5px solid #FFEA11',
         background: '#FFFDE7',
-        cursor: 'default',
+        cursor: 'pointer',
+        transform: 'scale(1.01)',
+        transition: 'all 0.2s ease',
       };
     }
 
     return {
       border: '2px solid #e5e7eb',
       background: '#fff',
-      opacity: 0.6,
-      cursor: 'default',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
     };
   };
-
 
   if (showCelebration) {
     return (
@@ -284,7 +267,7 @@ export default function WarmupPage() {
       {/* Card */}
       <div
         ref={cardRef}
-        className="relative z-10 bg-white rounded-3xl shadow-lg mx-4 w-full max-w-xl overflow-hidden"
+        className="relative z-10 bg-white rounded-3xl shadow-lg mx-4 w-full max-w-2xl overflow-hidden"
       >
         {/* Progress bar */}
         <div className="w-full h-3 bg-gray-100">
@@ -298,16 +281,16 @@ export default function WarmupPage() {
           {/* Title */}
           <div className="flex flex-col items-center mb-6">
             <img src={logo} alt="Yellow Owl Logo" style={{ height: 80, objectFit: 'contain', marginBottom: 12 }} />
-            <h1 className="text-2xl font-bold text-gray-800 mb-1">Quick Warm-Up! 🧠</h1>
+            <h1 className="text-2xl font-bold text-gray-800 mb-1">Quick Warm-Up!</h1>
             <p className="text-gray-500 text-sm text-center">
-              Let's get your brain buzzing with {totalQuestions} fun questions!
+              Let's get your brain buzzing with {totalQuestions} scenario questions!
             </p>
           </div>
 
           {/* Question panel */}
           <div ref={questionPanelRef}>
             {/* Question number badge */}
-            <div className="flex justify-center mb-4">
+            <div className="flex justify-center mb-2">
               <span
                 className="text-sm font-bold px-4 py-1.5 rounded-full"
                 style={{ backgroundColor: '#e0fdf6', color: '#2AD5B4' }}
@@ -316,37 +299,52 @@ export default function WarmupPage() {
               </span>
             </div>
 
+            {/* Question Title */}
+            <div className="mb-4 text-center">
+              <span className="text-xs font-black uppercase tracking-wider text-teal-500 block">
+                {question.title}
+              </span>
+            </div>
+
+            {/* Scenario Background */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-5 text-sm text-slate-800 shadow-xs">
+              <span className="font-extrabold block text-slate-900 mb-1.5 text-xs uppercase tracking-wider">
+                Scenario Background
+              </span>
+              <p className="leading-relaxed font-semibold">{warmupTrack.scenario}</p>
+            </div>
+
             {/* Question text */}
-            <p className="text-lg font-bold text-gray-800 text-center mb-6">
-              {question.question}
-            </p>
+            <div className="mb-6 text-center">
+              <p className="text-lg font-bold text-gray-800">
+                {question.question}
+              </p>
+            </div>
 
             {/* Options */}
-            <div className="flex flex-col gap-3 mb-4">
+            <div className="flex flex-col gap-3 mb-6">
               {question.options.map((option, optIdx) => (
                 <div
                   key={optIdx}
-                  className="rounded-2xl px-5 py-3 text-base font-semibold text-gray-800 choice-card"
+                  className="rounded-2xl px-5 py-3.5 text-base font-semibold text-gray-800 choice-card"
                   style={getOptionStyle(optIdx)}
                   onClick={() => handleOptionSelect(optIdx)}
                 >
                   <span className="mr-2 font-bold" style={{ color: '#2AD5B4' }}>
                     {String.fromCharCode(65 + optIdx)}.
                   </span>
-                  {option}
+                  {option.text}
                 </div>
               ))}
             </div>
-
-
 
             {/* Next / Finish button */}
             {hasAnswered && (
               <div className="flex justify-center">
                 <button className="btn-primary" onClick={handleNext}>
                   {currentQuestion < totalQuestions - 1
-                    ? 'Next Question →'
-                    : 'Complete 🎉'}
+                    ? 'Next Question'
+                    : 'Complete'}
                 </button>
               </div>
             )}
