@@ -691,7 +691,6 @@ export default function WeeklyAssessmentPage() {
   const hasDescriptive = !!getDescriptiveQuestion(currentChallenge);
   const isIdeas = !hasMcqs && !hasDescriptive;
   const isLastChallenge = currentChallengeIndex === WEEKLY_ASSESSMENT.length - 1;
-  const isAllCorrect = (!hasMcqs || mcqScore === totalMcqs) && (!hasTwist || twistCorrect);
 
   return (
     <div
