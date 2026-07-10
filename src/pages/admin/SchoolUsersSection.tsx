@@ -11,7 +11,7 @@ const GRADES = ['Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7'];
 const AGES = [9, 10, 11, 12, 13];
 const SESSION_OPTS = [15, 20, 25, 30];
 
-const INDIVIDUAL_STEPS = ['Select School & Grade', 'Student Info', 'Guardian Info', 'Review'];
+const INDIVIDUAL_STEPS = ['Select School & Grade', 'Student Info', 'Parent Info', 'Review'];
 const BULK_STEPS = ['Select School & Grade', 'Upload & Preview'];
 
 interface UserForm {
@@ -20,13 +20,13 @@ interface UserForm {
   childName: string;
   age: string;
   sessionTime: string;
-  guardianMobile: string;
-  guardianEmail: string;
+  parentMobile: string;
+  parentEmail: string;
   rollNo: string;
   countryCode: string;
 }
 
-const EMPTY: UserForm = { schoolId: '', grade: '', childName: '', age: '', sessionTime: '', guardianMobile: '', guardianEmail: '', rollNo: '', countryCode: '+91' };
+const EMPTY: UserForm = { schoolId: '', grade: '', childName: '', age: '', sessionTime: '', parentMobile: '', parentEmail: '', rollNo: '', countryCode: '+91' };
 
 type ErrMap = Partial<Record<keyof UserForm, string>>;
 
@@ -54,9 +54,9 @@ function validateStep(step: number, form: UserForm): ErrMap {
     }
   }
   if (step === 2) {
-    if (!form.guardianMobile.trim()) e.guardianMobile = 'Guardian mobile is required';
-    else if (!isMobile(form.guardianMobile)) e.guardianMobile = 'Enter a valid 10-digit mobile number';
-    if (form.guardianEmail && !isEmail(form.guardianEmail)) e.guardianEmail = 'Enter a valid email address';
+    if (!form.parentMobile.trim()) e.parentMobile = 'Parent mobile is required';
+    else if (!isMobile(form.parentMobile)) e.parentMobile = 'Enter a valid 10-digit mobile number';
+    if (form.parentEmail && !isEmail(form.parentEmail)) e.parentEmail = 'Enter a valid email address';
   }
   return e;
 }
@@ -109,9 +109,9 @@ interface BulkRow {
   rowNum: number;
   childName: string;
   age: string;
-  guardianMobile: string;
+  parentMobile: string;
   sessionTime: string;
-  guardianEmail: string;
+  parentEmail: string;
   rollNo: string;
   countryCode: string;
   errors: string[];
@@ -138,9 +138,9 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
 
     const childName = pick('Name', 'Child Name', 'Student Name');
     const age = pick('Age');
-    const guardianMobile = pick('Guardian Mobile', 'Mobile', 'Contact', 'Guardian Contact');
+    const parentMobile = pick('Parent Mobile', 'Guardian Mobile', 'Mobile', 'Contact', 'Guardian Contact', 'Parent Contact');
     const sessionTime = pick('Session Time', 'Session');
-    const guardianEmail = pick('Guardian Email', 'Email');
+    const parentEmail = pick('Parent Email', 'Guardian Email', 'Email');
     const rollNo = pick('Roll No', 'Roll Number', 'RollNo', 'Roll_No').toUpperCase();
     let countryCode = pick('Country Code', 'CountryCode', 'Code').trim();
     if (countryCode) {
@@ -154,7 +154,7 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
     const errors: string[] = [];
     if (!childName) errors.push('Name is missing');
     if (!age || isNaN(Number(age)) || Number(age) < 9 || Number(age) > 13) errors.push('Age must be 9–13');
-    if (!guardianMobile || !isMobile(guardianMobile)) errors.push('Valid 10-digit mobile required');
+    if (!parentMobile || !isMobile(parentMobile)) errors.push('Valid 10-digit mobile required');
     
     const sessNum = Number(sessionTime);
     if (!sessionTime || isNaN(sessNum) || sessNum < 15 || sessNum > 30) {
@@ -171,13 +171,13 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
       errors.push('Invalid country code (e.g. +91)');
     }
 
-    return { rowNum: idx + 2, childName, age, guardianMobile, sessionTime, guardianEmail, rollNo, countryCode, errors };
+    return { rowNum: idx + 2, childName, age, parentMobile, sessionTime, parentEmail, rollNo, countryCode, errors };
   });
 }
 
 function downloadTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Name', 'Age', 'Guardian Mobile', 'Session Time', 'Guardian Email', 'Roll No', 'Country Code'],
+    ['Name', 'Age', 'Parent Mobile', 'Session Time', 'Parent Email', 'Roll No', 'Country Code'],
     ['Arjun Kumar', '10', '9876543210', '20', 'parent@example.com', 'ARJ101', '+91'],
   ]);
   ws['!cols'] = [{ wch: 20 }, { wch: 8 }, { wch: 18 }, { wch: 14 }, { wch: 25 }, { wch: 12 }, { wch: 15 }];
@@ -232,7 +232,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
 
   const filtered = schoolUsers.filter(u => {
     const q = search.toLowerCase();
-    const matchSearch = u.childName.toLowerCase().includes(q) || u.guardianContact.includes(q) || (u.guardianEmail ?? '').toLowerCase().includes(q);
+    const matchSearch = u.childName.toLowerCase().includes(q) || u.parentContact.includes(q) || (u.parentEmail ?? '').toLowerCase().includes(q);
     const matchGrade = filterGrade === 'all' || u.grade === filterGrade;
     const matchSchool = filterSchoolId === 'all' || u.schoolId === filterSchoolId;
     return matchSearch && matchGrade && matchSchool;
@@ -269,8 +269,8 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
       id: genId(),
       childName: r.childName,
       age: Number(r.age),
-      guardianContact: r.guardianMobile,
-      guardianEmail: r.guardianEmail || undefined,
+      parentContact: r.parentMobile,
+      parentEmail: r.parentEmail || undefined,
       weeklySession: Number(r.sessionTime),
       usageMode: 'school',
       grade: form.grade,
@@ -332,7 +332,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #f1f5f9' }}>
-                  {['Child Name', 'School', 'Age', 'Grade', 'Roll No', 'Guardian Mobile', 'Guardian Email', 'Session', 'Actions'].map(h => (
+                  {['Child Name', 'School', 'Age', 'Grade', 'Roll No', 'Parent Mobile', 'Parent Email', 'Session', 'Actions'].map(h => (
                     <th key={h} style={{ textAlign: h === 'Actions' ? 'center' : 'left', padding: '14px 16px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -352,8 +352,8 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                         <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: '#eff6ff', color: '#1d4ed8' }}>{u.grade}</span>
                       </td>
                       <td style={{ padding: '14px 16px', color: '#1e293b', fontWeight: 600, fontFamily: 'monospace' }}>{u.rollNo || '—'}</td>
-                      <td style={{ padding: '14px 16px', color: '#475569' }}>{u.countryCode ? `${u.countryCode} ` : ''}{u.guardianContact}</td>
-                      <td style={{ padding: '14px 16px', color: '#64748b' }}>{u.guardianEmail || '—'}</td>
+                      <td style={{ padding: '14px 16px', color: '#475569' }}>{u.countryCode ? `${u.countryCode} ` : ''}{u.parentContact}</td>
+                      <td style={{ padding: '14px 16px', color: '#64748b' }}>{u.parentEmail || '—'}</td>
                       <td style={{ padding: '14px 16px', color: '#475569' }}>{u.weeklySession} min</td>
                       <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                         {deleteId === u.id ? (
@@ -374,8 +374,8 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                                 childName: u.childName,
                                 age: String(u.age),
                                 sessionTime: String(u.weeklySession),
-                                guardianMobile: u.guardianContact,
-                                guardianEmail: u.guardianEmail ?? '',
+                                parentMobile: u.parentContact,
+                                parentEmail: u.parentEmail ?? '',
                                 rollNo: u.rollNo ?? '',
                                 countryCode: u.countryCode ?? '+91'
                               });
@@ -501,7 +501,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
     const handleSubmit = () => {
       setUsers(p => [...p, {
         id: genId(), childName: form.childName, age: Number(form.age),
-        guardianContact: form.guardianMobile, guardianEmail: form.guardianEmail || undefined,
+        parentContact: form.parentMobile, parentEmail: form.parentEmail || undefined,
         weeklySession: Number(form.sessionTime), usageMode: 'school', grade: form.grade,
         schoolId: form.schoolId,
         rollNo: form.rollNo,
@@ -625,11 +625,11 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
             </div>
           )}
 
-          {/* ── Step 2 (individual): Guardian Info ────────────────────────── */}
+          {/* ── Step 2 (individual): Parent Info ────────────────────────── */}
           {step === 2 && uploadMode === 'individual' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div>
-                <label style={lbl}>Guardian Mobile Number <span style={{ color: '#ef4444' }}>*</span></label>
+                <label style={lbl}>Parent Mobile Number <span style={{ color: '#ef4444' }}>*</span></label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <select
                     value={form.countryCode}
@@ -648,20 +648,20 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                   </select>
                   <input
                     type="tel"
-                    value={form.guardianMobile}
+                    value={form.parentMobile}
                     placeholder="10-digit mobile number"
                     maxLength={10}
-                    onChange={(e) => onChange('guardianMobile', e.target.value.replace(/\D/g, ''))}
-                    style={{ ...iStyle(errors.guardianMobile), flex: 1 }}
+                    onChange={(e) => onChange('parentMobile', e.target.value.replace(/\D/g, ''))}
+                    style={{ ...iStyle(errors.parentMobile), flex: 1 }}
                   />
                 </div>
-                {errors.guardianMobile && <p style={errTxt}>{errors.guardianMobile}</p>}
+                {errors.parentMobile && <p style={errTxt}>{errors.parentMobile}</p>}
               </div>
               <div>
-                <label style={lbl}>Guardian Email</label>
-                <input type="email" value={form.guardianEmail} placeholder="guardian@example.com"
-                  onChange={e => onChange('guardianEmail', e.target.value)} style={iStyle(errors.guardianEmail)} />
-                {errors.guardianEmail && <p style={errTxt}>{errors.guardianEmail}</p>}
+                <label style={lbl}>Parent Email</label>
+                <input type="email" value={form.parentEmail} placeholder="parent@example.com"
+                  onChange={e => onChange('parentEmail', e.target.value)} style={iStyle(errors.parentEmail)} />
+                {errors.parentEmail && <p style={errTxt}>{errors.parentEmail}</p>}
                 <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Optional</p>
               </div>
             </div>
@@ -678,8 +678,8 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                 <FieldRow label="Age" value={form.age ? `${form.age} years` : ''} />
                 <FieldRow label="Weekly Session" value={form.sessionTime ? `${form.sessionTime} minutes` : ''} />
                 <FieldRow label="Roll Number" value={form.rollNo} />
-                <FieldRow label="Guardian Mobile" value={`${form.countryCode} ${form.guardianMobile}`} />
-                <FieldRow label="Guardian Email" value={form.guardianEmail || 'Not provided'} />
+                <FieldRow label="Parent Mobile" value={`${form.countryCode} ${form.parentMobile}`} />
+                <FieldRow label="Parent Email" value={form.parentEmail || 'Not provided'} />
               </div>
             </div>
           )}
@@ -691,7 +691,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', margin: 0 }}>Upload student data for {form.grade}</p>
                   <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0' }}>
-                    Mandatory columns: Name, Age, Guardian Mobile, Session Time, Roll No
+                    Mandatory columns: Name, Age, Parent Mobile, Session Time, Roll No
                   </p>
                 </div>
                 <button onClick={downloadTemplate} style={{
@@ -770,7 +770,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                       <thead style={{ position: 'sticky', top: 0, background: '#f8fafc' }}>
                         <tr>
-                          {['Row', 'Name', 'Age', 'Country Code', 'Guardian Mobile', 'Session', 'Email', 'Roll No', 'Status'].map(h => (
+                          {['Row', 'Name', 'Age', 'Country Code', 'Parent Mobile', 'Session', 'Email', 'Roll No', 'Status'].map(h => (
                             <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, color: '#64748b', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>{h}</th>
                           ))}
                         </tr>
@@ -782,9 +782,9 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                             <td style={{ padding: '8px 12px', fontWeight: 600, color: '#1e293b' }}>{row.childName || '—'}</td>
                             <td style={{ padding: '8px 12px', color: '#475569' }}>{row.age || '—'}</td>
                             <td style={{ padding: '8px 12px', color: '#475569' }}>{row.countryCode || '—'}</td>
-                            <td style={{ padding: '8px 12px', color: '#475569' }}>{row.guardianMobile || '—'}</td>
+                            <td style={{ padding: '8px 12px', color: '#475569' }}>{row.parentMobile || '—'}</td>
                             <td style={{ padding: '8px 12px', color: '#475569' }}>{row.sessionTime || '—'}</td>
-                            <td style={{ padding: '8px 12px', color: '#64748b' }}>{row.guardianEmail || '—'}</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>{row.parentEmail || '—'}</td>
                             <td style={{ padding: '8px 12px', color: '#1e293b', fontWeight: 600, fontFamily: 'monospace' }}>{row.rollNo || '—'}</td>
                             <td style={{ padding: '8px 12px' }}>
                               {row.errors.length === 0 ? (
@@ -844,15 +844,15 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
     } else if (!validateRollNo(editForm.rollNo)) {
       e.rollNo = 'Roll number must be 3 letters + 3 digits (e.g. ABC123)';
     }
-    if (!editForm.guardianMobile.trim()) e.guardianMobile = 'Guardian mobile is required';
-    else if (!isMobile(editForm.guardianMobile)) e.guardianMobile = 'Enter a valid 10-digit mobile number';
-    if (editForm.guardianEmail && !isEmail(editForm.guardianEmail)) e.guardianEmail = 'Enter a valid email address';
+    if (!editForm.parentMobile.trim()) e.parentMobile = 'Parent mobile is required';
+    else if (!isMobile(editForm.parentMobile)) e.parentMobile = 'Enter a valid 10-digit mobile number';
+    if (editForm.parentEmail && !isEmail(editForm.parentEmail)) e.parentEmail = 'Enter a valid email address';
     setEditErrors(e);
     if (Object.keys(e).length > 0) return;
     setUsers(p => p.map(u => u.id === editUser!.id ? {
       ...u, schoolId: editForm.schoolId, grade: editForm.grade, childName: editForm.childName,
-      age: Number(editForm.age), guardianContact: editForm.guardianMobile,
-      guardianEmail: editForm.guardianEmail || undefined,
+      age: Number(editForm.age), parentContact: editForm.parentMobile,
+      parentEmail: editForm.parentEmail || undefined,
       weeklySession: Number(editForm.sessionTime),
       rollNo: editForm.rollNo,
       countryCode: editForm.countryCode,
@@ -913,7 +913,7 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
           </div>
           <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 20 }}>
             <div>
-              <label style={lbl}>Guardian Mobile Number <span style={{ color: '#ef4444' }}>*</span></label>
+              <label style={lbl}>Parent Mobile Number <span style={{ color: '#ef4444' }}>*</span></label>
               <div style={{ display: 'flex', gap: 8 }}>
                 <select
                   value={editForm.countryCode}
@@ -932,19 +932,19 @@ export default function SchoolUsersSection({ users, setUsers, schools }: {
                 </select>
                 <input
                   type="tel"
-                  value={editForm.guardianMobile}
+                  value={editForm.parentMobile}
                   maxLength={10}
-                  onChange={(e) => onEditChange('guardianMobile', e.target.value.replace(/\D/g, ''))}
-                  style={{ ...iStyle(editErrors.guardianMobile), flex: 1 }}
+                  onChange={(e) => onEditChange('parentMobile', e.target.value.replace(/\D/g, ''))}
+                  style={{ ...iStyle(editErrors.parentMobile), flex: 1 }}
                 />
               </div>
-              {editErrors.guardianMobile && <p style={errTxt}>{editErrors.guardianMobile}</p>}
+              {editErrors.parentMobile && <p style={errTxt}>{editErrors.parentMobile}</p>}
             </div>
           </div>
           <div>
-            <label style={lbl}>Guardian Email</label>
-            <input type="email" value={editForm.guardianEmail} onChange={e => onEditChange('guardianEmail', e.target.value)} style={iStyle(editErrors.guardianEmail)} />
-            {editErrors.guardianEmail && <p style={errTxt}>{editErrors.guardianEmail}</p>}
+            <label style={lbl}>Parent Email</label>
+            <input type="email" value={editForm.parentEmail} onChange={e => onEditChange('parentEmail', e.target.value)} style={iStyle(editErrors.parentEmail)} />
+            {editErrors.parentEmail && <p style={errTxt}>{editErrors.parentEmail}</p>}
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 32 }}>

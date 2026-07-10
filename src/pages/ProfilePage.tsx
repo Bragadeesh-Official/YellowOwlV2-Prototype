@@ -36,7 +36,7 @@ export default function ProfilePage() {
   const formRef = useRef<HTMLDivElement>(null);
   const interestsRef = useRef<HTMLDivElement>(null);
   const skillsRef = useRef<HTMLDivElement>(null);
-  const guardianRef = useRef<HTMLDivElement>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
   const logoutRef = useRef<HTMLDivElement>(null);
 
   // Redirect if not logged in
@@ -65,7 +65,7 @@ export default function ProfilePage() {
         formRef.current,
         interestsRef.current,
         skillsRef.current,
-        guardianRef.current,
+        parentRef.current,
         logoutRef.current,
       ].filter(Boolean) as HTMLElement[];
 
@@ -176,7 +176,7 @@ export default function ProfilePage() {
               onClick={() => navigate('/dashboard')}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-600 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer"
             >
-              Adventure Den
+              My Challenges
             </button>
 
             <button
@@ -194,10 +194,10 @@ export default function ProfilePage() {
             </button>
 
             <button
-              onClick={() => navigate('/guardian')}
+              onClick={() => navigate('/parent')}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-655 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer"
             >
-              Guardian View
+              Parent View
             </button>
           </nav>
         </div>
@@ -270,7 +270,7 @@ export default function ProfilePage() {
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all"
                 >
-                  Adventure Den
+                  My Challenges
                 </button>
 
                 <button
@@ -296,11 +296,11 @@ export default function ProfilePage() {
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    navigate('/guardian');
+                    navigate('/parent');
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all"
                 >
-                  Guardian View
+                  Parent View
                 </button>
               </nav>
             </div>

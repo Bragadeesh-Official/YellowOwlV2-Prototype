@@ -9,13 +9,13 @@ interface UserForm {
   childName: string;
   age: string;
   sessionTime: string;
-  guardianMobile: string;
-  guardianEmail: string;
+  parentMobile: string;
+  parentEmail: string;
   countryCode: string;
 }
 
-const EMPTY: UserForm = { childName: '', age: '', sessionTime: '', guardianMobile: '', guardianEmail: '', countryCode: '+91' };
-const STEPS = ['Child Info', 'Guardian Info', 'Review'];
+const EMPTY: UserForm = { childName: '', age: '', sessionTime: '', parentMobile: '', parentEmail: '', countryCode: '+91' };
+const STEPS = ['Child Info', 'Parent Info', 'Review'];
 const AGES = [9, 10, 11, 12, 13];
 const SESSION_OPTS = [15, 20, 25, 30];
 
@@ -42,9 +42,9 @@ function validateStep(step: number, form: UserForm): ErrMap {
     if (!form.sessionTime) e.sessionTime = 'Session time is required';
   }
   if (step === 1) {
-    if (!form.guardianMobile.trim()) e.guardianMobile = 'Guardian mobile is required';
-    else if (!isMobile(form.guardianMobile)) e.guardianMobile = 'Enter a valid 10-digit mobile number';
-    if (form.guardianEmail && !isEmail(form.guardianEmail)) e.guardianEmail = 'Enter a valid email address';
+    if (!form.parentMobile.trim()) e.parentMobile = 'Parent mobile is required';
+    else if (!isMobile(form.parentMobile)) e.parentMobile = 'Enter a valid 10-digit mobile number';
+    if (form.parentEmail && !isEmail(form.parentEmail)) e.parentEmail = 'Enter a valid email address';
   }
   return e;
 }
@@ -132,7 +132,7 @@ function UserFormStep1({ form, errors, onChange }: { form: UserForm; errors: Err
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
-        <label style={lbl}>Guardian Mobile Number <span style={{ color: '#ef4444' }}>*</span></label>
+        <label style={lbl}>Parent Mobile Number <span style={{ color: '#ef4444' }}>*</span></label>
         <div style={{ display: 'flex', gap: 8 }}>
           <select
             value={form.countryCode}
@@ -151,20 +151,20 @@ function UserFormStep1({ form, errors, onChange }: { form: UserForm; errors: Err
           </select>
           <input
             type="tel"
-            value={form.guardianMobile}
+            value={form.parentMobile}
             placeholder="10-digit mobile number"
             maxLength={10}
-            onChange={(e) => onChange('guardianMobile', e.target.value.replace(/\D/g, ''))}
-            style={{ ...iStyle(errors.guardianMobile), flex: 1 }}
+            onChange={(e) => onChange('parentMobile', e.target.value.replace(/\D/g, ''))}
+            style={{ ...iStyle(errors.parentMobile), flex: 1 }}
           />
         </div>
-        {errors.guardianMobile && <p style={errTxt}>{errors.guardianMobile}</p>}
+        {errors.parentMobile && <p style={errTxt}>{errors.parentMobile}</p>}
       </div>
       <div>
-        <label style={lbl}>Guardian Email</label>
-        <input type="email" value={form.guardianEmail} placeholder="guardian@example.com"
-          onChange={e => onChange('guardianEmail', e.target.value)} style={iStyle(errors.guardianEmail)} />
-        {errors.guardianEmail && <p style={errTxt}>{errors.guardianEmail}</p>}
+        <label style={lbl}>Parent Email</label>
+        <input type="email" value={form.parentEmail} placeholder="parent@example.com"
+          onChange={e => onChange('parentEmail', e.target.value)} style={iStyle(errors.parentEmail)} />
+        {errors.parentEmail && <p style={errTxt}>{errors.parentEmail}</p>}
         <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Optional</p>
       </div>
     </div>
@@ -198,7 +198,7 @@ export default function GeneralUsersSection({ users, setUsers }: {
 
   const filtered = generalUsers.filter(u => {
     const q = search.toLowerCase();
-    return u.childName.toLowerCase().includes(q) || u.guardianContact.includes(q) || (u.guardianEmail ?? '').toLowerCase().includes(q);
+    return u.childName.toLowerCase().includes(q) || u.parentContact.includes(q) || (u.parentEmail ?? '').toLowerCase().includes(q);
   });
 
   const totalPages = Math.ceil(filtered.length / pageSize);
@@ -245,7 +245,7 @@ export default function GeneralUsersSection({ users, setUsers }: {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #f1f5f9' }}>
-                  {['Child Name', 'Age', 'Guardian Mobile', 'Guardian Email', 'Session', 'Mode', 'Actions'].map(h => (
+                  {['Child Name', 'Age', 'Parent Mobile', 'Parent Email', 'Session', 'Mode', 'Actions'].map(h => (
                     <th key={h} style={{ textAlign: h === 'Actions' ? 'center' : 'left', padding: '14px 16px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -257,8 +257,8 @@ export default function GeneralUsersSection({ users, setUsers }: {
                   <tr key={u.id} style={{ background: i % 2 === 0 ? 'white' : '#fafbfc', borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '14px 16px', fontWeight: 600, color: '#1e293b' }}>{u.childName}</td>
                     <td style={{ padding: '14px 16px', color: '#475569' }}>{u.age} yrs</td>
-                    <td style={{ padding: '14px 16px', color: '#475569' }}>{u.countryCode ? `${u.countryCode} ` : ''}{u.guardianContact}</td>
-                    <td style={{ padding: '14px 16px', color: '#64748b' }}>{u.guardianEmail || '—'}</td>
+                    <td style={{ padding: '14px 16px', color: '#475569' }}>{u.countryCode ? `${u.countryCode} ` : ''}{u.parentContact}</td>
+                    <td style={{ padding: '14px 16px', color: '#64748b' }}>{u.parentEmail || '—'}</td>
                     <td style={{ padding: '14px 16px', color: '#475569' }}>{u.weeklySession} min</td>
                     <td style={{ padding: '14px 16px' }}><ModeBadge mode={u.usageMode} /></td>
                     <td style={{ padding: '14px 16px', textAlign: 'center' }}>
@@ -274,7 +274,7 @@ export default function GeneralUsersSection({ users, setUsers }: {
                         <span style={{ display: 'inline-flex', gap: 8 }}>
                           <button onClick={() => {
                             setEditUser(u);
-                            setEditForm({ childName: u.childName, age: String(u.age), sessionTime: String(u.weeklySession), guardianMobile: u.guardianContact, guardianEmail: u.guardianEmail ?? '', countryCode: u.countryCode ?? '+91' });
+                            setEditForm({ childName: u.childName, age: String(u.age), sessionTime: String(u.weeklySession), parentMobile: u.parentContact, parentEmail: u.parentEmail ?? '', countryCode: u.countryCode ?? '+91' });
                             setEditErrors({}); setView('edit');
                           }}
                             title="Edit User"
@@ -396,7 +396,7 @@ export default function GeneralUsersSection({ users, setUsers }: {
     const handleSubmit = () => {
       setUsers(p => [...p, {
         id: genId(), childName: form.childName, age: Number(form.age),
-        guardianContact: form.guardianMobile, guardianEmail: form.guardianEmail || undefined,
+        parentContact: form.parentMobile, parentEmail: form.parentEmail || undefined,
         weeklySession: Number(form.sessionTime), usageMode: 'general',
         countryCode: form.countryCode,
       }]);
@@ -422,8 +422,8 @@ export default function GeneralUsersSection({ users, setUsers }: {
                 <FieldRow label="Child Name" value={form.childName} />
                 <FieldRow label="Age" value={form.age ? `${form.age} years` : ''} />
                 <FieldRow label="Weekly Session" value={form.sessionTime ? `${form.sessionTime} minutes` : ''} />
-                <FieldRow label="Guardian Mobile" value={`${form.countryCode} ${form.guardianMobile}`} />
-                <FieldRow label="Guardian Email" value={form.guardianEmail || 'Not provided'} />
+                <FieldRow label="Parent Mobile" value={`${form.countryCode} ${form.parentMobile}`} />
+                <FieldRow label="Parent Email" value={form.parentEmail || 'Not provided'} />
                 <FieldRow label="Usage Mode" value="General" />
               </div>
             </div>
@@ -453,7 +453,7 @@ export default function GeneralUsersSection({ users, setUsers }: {
     if (Object.keys(e).length > 0) return;
     setUsers(p => p.map(u => u.id === editUser!.id ? {
       ...u, childName: editForm.childName, age: Number(editForm.age),
-      guardianContact: editForm.guardianMobile, guardianEmail: editForm.guardianEmail || undefined,
+      parentContact: editForm.parentMobile, parentEmail: editForm.parentEmail || undefined,
       weeklySession: Number(editForm.sessionTime),
       countryCode: editForm.countryCode,
     } : u));

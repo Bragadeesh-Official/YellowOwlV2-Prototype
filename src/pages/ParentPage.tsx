@@ -108,7 +108,7 @@ const BUBBLES = [
   { size: 110, top: '92%', left: '15%', bg: '#FFEA11' },
 ];
 
-export default function GuardianPage() {
+export default function ParentPage() {
   const navigate = useNavigate();
   const { profile, isLoggedIn, logout } = useApp();
 
@@ -237,19 +237,19 @@ export default function GuardianPage() {
               onClick={() => navigate('/dashboard')}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-600 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer"
             >
-              Adventure Den
+              My Challenges
             </button>
 
             <button
               onClick={() => navigate('/skills')}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-655 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer"
             >
               My Super skillss
             </button>
 
             <button
               onClick={() => navigate('/profile')}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-655 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer"
             >
               My Profile
             </button>
@@ -258,7 +258,7 @@ export default function GuardianPage() {
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left bg-[#FFEA11] text-gray-800 border border-yellow-300/60 shadow-sm cursor-pointer"
             >
-              Guardian View
+              Parent View
             </button>
           </nav>
         </div>
@@ -267,7 +267,7 @@ export default function GuardianPage() {
         <div className="space-y-2 pt-4 border-t border-gray-100">
           <button
             onClick={() => navigate('/dashboard')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-teal-650 hover:bg-teal-50 transition-all cursor-pointer text-left"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-teal-655 hover:bg-teal-50 transition-all cursor-pointer text-left"
           >
             <span>Guide Tour</span>
           </button>
@@ -329,9 +329,9 @@ export default function GuardianPage() {
                     setMobileMenuOpen(false);
                     navigate('/dashboard');
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-655 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all"
                 >
-                  Adventure Den
+                  My Challenges
                 </button>
 
                 <button
@@ -339,7 +339,7 @@ export default function GuardianPage() {
                     setMobileMenuOpen(false);
                     navigate('/skills');
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-655 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all"
                 >
                   My Super skillss
                 </button>
@@ -349,7 +349,7 @@ export default function GuardianPage() {
                     setMobileMenuOpen(false);
                     navigate('/profile');
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-655 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all"
                 >
                   My Profile
                 </button>
@@ -358,7 +358,7 @@ export default function GuardianPage() {
                   onClick={() => setMobileMenuOpen(false)}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left bg-[#FFEA11] text-gray-800 border border-yellow-300/60 shadow-sm"
                 >
-                  Guardian View
+                  Parent View
                 </button>
               </nav>
             </div>
@@ -370,7 +370,7 @@ export default function GuardianPage() {
                   setMobileMenuOpen(false);
                   navigate('/dashboard');
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-teal-650 hover:bg-teal-50 text-left"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-teal-655 hover:bg-teal-50 text-left"
               >
                 <span>Guide Tour</span>
               </button>

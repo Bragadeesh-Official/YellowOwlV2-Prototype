@@ -141,9 +141,9 @@ export default function DashboardPage() {
           el = document.getElementById('tour-profile-nav-mobile');
         }
       } else if (tourStep === 4) {
-        el = document.getElementById('tour-guardian-nav');
+        el = document.getElementById('tour-parent-nav');
         if (el && el.getBoundingClientRect().width === 0) {
-          el = document.getElementById('tour-guardian-nav-mobile');
+          el = document.getElementById('tour-parent-nav-mobile');
         }
       }
 
@@ -314,7 +314,7 @@ export default function DashboardPage() {
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               className={`w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-left bg-[#FFEA11] text-gray-800 border border-yellow-300/60 shadow-sm cursor-pointer transition-opacity ${tourStep > 0 && tourStep !== 1 ? 'opacity-30' : 'opacity-100'}`}
             >
-              Adventure Den
+              My Challenges
             </button>
 
             <button
@@ -334,11 +334,11 @@ export default function DashboardPage() {
             </button>
 
             <button
-              id="tour-guardian-nav"
-              onClick={() => navigate('/guardian')}
+              id="tour-parent-nav"
+              onClick={() => navigate('/parent')}
               className={`w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-600 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer ${tourStep > 0 && tourStep !== 4 ? 'opacity-30' : 'opacity-100'} ${tourStep === 4 ? 'bg-[#FFEA11] text-gray-800 border-2 border-yellow-400 shadow-md scale-105' : ''}`}
             >
-              Guardian View
+              Parent View
             </button>
           </nav>
         </div>
@@ -411,7 +411,7 @@ export default function DashboardPage() {
                   }}
                   className={`w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-left bg-[#FFEA11] text-gray-800 border border-yellow-300/60 shadow-sm transition-opacity ${tourStep > 0 && tourStep !== 1 ? 'opacity-30' : 'opacity-100'}`}
                 >
-                  Adventure Den
+                  My Challenges
                 </button>
 
                 <button
@@ -437,14 +437,14 @@ export default function DashboardPage() {
                 </button>
 
                 <button
-                  id="tour-guardian-nav-mobile"
+                  id="tour-parent-nav-mobile"
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    navigate('/guardian');
+                    navigate('/parent');
                   }}
                   className={`w-full flex items-center px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all ${tourStep > 0 && tourStep !== 4 ? 'opacity-30' : 'opacity-100'} ${tourStep === 4 ? 'bg-[#FFEA11] text-gray-800 border-2 border-yellow-400 shadow-md scale-105' : ''}`}
                 >
-                  Guardian View
+                  Parent View
                 </button>
               </nav>
             </div>
@@ -782,7 +782,7 @@ export default function DashboardPage() {
                       ? 'My Super skillss'
                       : tourStep === 3
                         ? 'My Profile'
-                        : 'Guardian View'}
+                        : 'Parent View'}
                 </h3>
               </div>
 
@@ -791,9 +791,9 @@ export default function DashboardPage() {
                   ? "This is the Weekly Assessment box! Solve your weekly challenges here to unlock your potential and earn stars."
                   : tourStep === 2
                     ? "Track your growth across various abilities here! Click this link to see your dynamic progress graphs."
-                    : tourStep === 3
-                      ? "Customize your name, select your avatar, and manage your learning interests to tailor the challenges."
-                      : "A secure, parents-only view displaying in-depth analytical growth patterns and specific next steps for you."}
+                  : tourStep === 3
+                    ? "Customize your name, select your avatar, and manage your learning interests to tailor the challenges."
+                    : "A secure, parents-only view displaying in-depth analytical growth patterns and specific next steps for you."}
               </p>
 
               <div className="flex items-center justify-between">

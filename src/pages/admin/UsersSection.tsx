@@ -9,8 +9,8 @@ type View = 'list' | 'create' | 'edit' | 'bulk-upload';
 interface FormState {
   childName: string;
   age: string;
-  guardianContact: string;
-  guardianEmail: string;
+  parentContact: string;
+  parentEmail: string;
   weeklySession: string;
   usageMode: UsageMode | '';
   grade: string;
@@ -22,8 +22,8 @@ interface FormState {
 const EMPTY_FORM: FormState = {
   childName: '',
   age: '',
-  guardianContact: '',
-  guardianEmail: '',
+  parentContact: '',
+  parentEmail: '',
   weeklySession: '',
   usageMode: '',
   grade: '',
@@ -65,8 +65,8 @@ interface BulkRow {
   rowNum: number;
   childName: string;
   age: string;
-  guardianMobile: string;
-  guardianEmail: string;
+  parentMobile: string;
+  parentEmail: string;
   sessionTime: string;
   rollNo: string;
   countryCode: string;
@@ -85,8 +85,8 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
 
     const childName = pick('Child Name', 'Name', 'Student Name', 'Full Name');
     const age = pick('Age', 'Child Age');
-    const guardianMobile = pick('Guardian Mobile', 'Mobile', 'Contact', 'Guardian Contact', 'Phone');
-    const guardianEmail = pick('Guardian Email', 'Email');
+    const parentMobile = pick('Parent Mobile', 'Guardian Mobile', 'Mobile', 'Contact', 'Guardian Contact', 'Phone');
+    const parentEmail = pick('Parent Email', 'Guardian Email', 'Email');
     const sessionTime = pick('Weekly Session Time', 'Session Time', 'Weekly Session', 'Session', 'Time');
     const rollNo = pick('Roll No', 'Roll Number', 'RollNo', 'Roll_No').toUpperCase();
     let countryCode = pick('Country Code', 'CountryCode', 'Code').trim();
@@ -110,13 +110,13 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
       }
     }
 
-    if (!guardianMobile) {
+    if (!parentMobile) {
       errors.push('Mobile is missing');
-    } else if (!validatePhone(guardianMobile)) {
+    } else if (!validatePhone(parentMobile)) {
       errors.push('Valid 10-digit mobile required');
     }
 
-    if (guardianEmail && !validateEmail(guardianEmail)) {
+    if (parentEmail && !validateEmail(parentEmail)) {
       errors.push('Enter a valid email');
     }
 
@@ -143,8 +143,8 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
       rowNum: idx + 2,
       childName,
       age,
-      guardianMobile,
-      guardianEmail,
+      parentMobile,
+      parentEmail,
       sessionTime,
       rollNo,
       countryCode,
@@ -155,7 +155,7 @@ function parseBulkRows(raw: Record<string, unknown>[]): BulkRow[] {
 
 function downloadTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Child Name', 'Age', 'Guardian Mobile', 'Guardian Email', 'Weekly Session Time', 'Roll No', 'Country Code'],
+    ['Child Name', 'Age', 'Parent Mobile', 'Parent Email', 'Weekly Session Time', 'Roll No', 'Country Code'],
     ['Arjun Kumar', '10', '9876543210', 'parent@example.com', '20', 'ARJ101', '+91'],
     ['Priya Sharma', '11', '9123456789', 'sharma@example.com', '25', 'PRI202', '+91'],
   ]);
@@ -199,8 +199,8 @@ export default function UsersSection({
     const q = search.toLowerCase();
     const matchSearch =
       u.childName.toLowerCase().includes(q) ||
-      (u.guardianEmail ?? '').toLowerCase().includes(q) ||
-      u.guardianContact.includes(q);
+      (u.parentEmail ?? '').toLowerCase().includes(q) ||
+      u.parentContact.includes(q);
     const matchMode = filterMode === 'all' || u.usageMode === filterMode;
     const matchSchool = filterSchoolId === 'all' || (u.usageMode === 'school' && u.schoolId === filterSchoolId);
     return matchSearch && matchMode && matchSchool;
@@ -222,8 +222,8 @@ export default function UsersSection({
     setForm({
       childName: user.childName,
       age: String(user.age),
-      guardianContact: user.guardianContact,
-      guardianEmail: user.guardianEmail ?? '',
+      parentContact: user.parentContact,
+      parentEmail: user.parentEmail ?? '',
       weeklySession: String(user.weeklySession),
       usageMode: user.usageMode,
       grade: user.grade ?? '',
@@ -239,15 +239,15 @@ export default function UsersSection({
     const e: Partial<Record<keyof FormState, string>> = {};
     if (!form.childName.trim()) e.childName = 'Child name is required';
     if (!form.age) e.age = 'Age is required';
-    if (!form.guardianContact.trim()) {
-      e.guardianContact = 'Guardian contact is required';
-    } else if (!validatePhone(form.guardianContact)) {
-      e.guardianContact = 'Enter a valid 10-digit mobile number';
+    if (!form.parentContact.trim()) {
+      e.parentContact = 'Parent contact is required';
+    } else if (!validatePhone(form.parentContact)) {
+      e.parentContact = 'Enter a valid 10-digit mobile number';
     }
-    if (!form.guardianEmail.trim()) {
-      e.guardianEmail = 'Guardian email is required';
-    } else if (!validateEmail(form.guardianEmail)) {
-      e.guardianEmail = 'Enter a valid email address';
+    if (!form.parentEmail.trim()) {
+      e.parentEmail = 'Parent email is required';
+    } else if (!validateEmail(form.parentEmail)) {
+      e.parentEmail = 'Enter a valid email address';
     }
     if (!form.weeklySession) e.weeklySession = 'Session time is required';
     if (!form.usageMode) e.usageMode = 'Usage mode is required';
@@ -275,8 +275,8 @@ export default function UsersSection({
       id: editingId ?? genId(),
       childName: form.childName.trim(),
       age: Number(form.age),
-      guardianContact: form.guardianContact.trim(),
-      guardianEmail: form.guardianEmail.trim(),
+      parentContact: form.parentContact.trim(),
+      parentEmail: form.parentEmail.trim(),
       weeklySession: Number(form.weeklySession),
       usageMode: form.usageMode as UsageMode,
       grade: form.usageMode === 'school' ? form.grade : undefined,
@@ -344,8 +344,8 @@ export default function UsersSection({
       id: genId(),
       childName: r.childName,
       age: Number(r.age),
-      guardianContact: r.guardianMobile,
-      guardianEmail: r.guardianEmail || undefined,
+      parentContact: r.parentMobile,
+      parentEmail: r.parentEmail || undefined,
       weeklySession: Number(r.sessionTime),
       usageMode: 'school',
       grade: bulkGrade,
@@ -459,8 +459,8 @@ export default function UsersSection({
                 <tr style={{ background: '#f8fffe', borderBottom: '2px solid #e5f9f5' }}>
                   <th className="text-left px-5 py-3.5 font-bold text-gray-600 whitespace-nowrap">Child Name</th>
                   <th className="text-left px-5 py-3.5 font-bold text-gray-600 whitespace-nowrap">Age</th>
-                  <th className="text-left px-5 py-3.5 font-bold text-gray-600 whitespace-nowrap">Guardian Contact</th>
-                  <th className="text-left px-5 py-3.5 font-bold text-gray-600 whitespace-nowrap">Guardian Email</th>
+                  <th className="text-left px-5 py-3.5 font-bold text-gray-600 whitespace-nowrap">Parent Contact</th>
+                  <th className="text-left px-5 py-3.5 font-bold text-gray-600 whitespace-nowrap">Parent Email</th>
                   <th className="text-left px-5 py-3.5 font-bold text-gray-600 whitespace-nowrap">Session</th>
                   <th className="text-left px-5 py-3.5 font-bold text-gray-600 whitespace-nowrap">Mode</th>
                   <th className="text-left px-5 py-3.5 font-bold text-gray-600 whitespace-nowrap">Tenant</th>
@@ -489,8 +489,8 @@ export default function UsersSection({
                       >
                         <td className="px-5 py-3.5 font-semibold text-gray-800 whitespace-nowrap">{user.childName}</td>
                         <td className="px-5 py-3.5 text-gray-600">{user.age} yrs</td>
-                        <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">{user.countryCode ? `${user.countryCode} ` : ''}{user.guardianContact}</td>
-                        <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">{user.guardianEmail}</td>
+                        <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">{user.countryCode ? `${user.countryCode} ` : ''}{user.parentContact}</td>
+                        <td className="px-5 py-3.5 text-gray-500 whitespace-nowrap">{user.parentEmail}</td>
                         <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">{user.weeklySession} min</td>
                         <td className="px-5 py-3.5">
                           <span
@@ -660,10 +660,10 @@ export default function UsersSection({
               {errors.age && <p className="mt-1 text-xs text-red-500">{errors.age}</p>}
             </div>
 
-            {/* Guardian Contact */}
+            {/* Parent Contact */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Guardian Contact Number <span className="text-red-400">*</span>
+                Parent Contact Number <span className="text-red-400">*</span>
               </label>
               <div className="flex gap-2">
                 <select
@@ -680,29 +680,29 @@ export default function UsersSection({
                 </select>
                 <input
                   type="tel"
-                  value={form.guardianContact}
-                  onChange={(e) => setField('guardianContact', e.target.value.replace(/\D/g, ''))}
+                  value={form.parentContact}
+                  onChange={(e) => setField('parentContact', e.target.value.replace(/\D/g, ''))}
                   placeholder="10-digit mobile number"
                   maxLength={10}
-                  className={`${inputClass(errors.guardianContact)} flex-1`}
+                  className={`${inputClass(errors.parentContact)} flex-1`}
                 />
               </div>
-              {errors.guardianContact && <p className="mt-1 text-xs text-red-500">{errors.guardianContact}</p>}
+              {errors.parentContact && <p className="mt-1 text-xs text-red-500">{errors.parentContact}</p>}
             </div>
 
-            {/* Guardian Email */}
+            {/* Parent Email */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Guardian Email <span className="text-red-400">*</span>
+                Parent Email <span className="text-red-400">*</span>
               </label>
               <input
                 type="email"
-                value={form.guardianEmail}
-                onChange={(e) => setField('guardianEmail', e.target.value)}
-                placeholder="guardian@example.com"
-                className={inputClass(errors.guardianEmail)}
+                value={form.parentEmail}
+                onChange={(e) => setField('parentEmail', e.target.value)}
+                placeholder="parent@example.com"
+                className={inputClass(errors.parentEmail)}
               />
-              {errors.guardianEmail && <p className="mt-1 text-xs text-red-500">{errors.guardianEmail}</p>}
+              {errors.parentEmail && <p className="mt-1 text-xs text-red-500">{errors.parentEmail}</p>}
             </div>
 
             {/* Weekly Session */}
@@ -843,7 +843,7 @@ export default function UsersSection({
           <div className="flex flex-col gap-5">
             <p className="text-xs text-gray-500">
               Upload school-linked users using an Excel spreadsheet.
-              The sheet must contain the child's name, age (must be between <strong>9 to 13</strong>), guardian mobile, guardian email (optional), and weekly session time (from <strong>15 to 30 min</strong>).
+              The sheet must contain the child's name, age (must be between <strong>9 to 13</strong>), parent mobile, parent email (optional), and weekly session time (from <strong>15 to 30 min</strong>).
             </p>
 
             {/* School selection */}
@@ -913,7 +913,7 @@ export default function UsersSection({
                 ) : (
                   <div>
                     <div className="text-sm text-gray-600 font-medium">Click to upload spreadsheet (.xlsx)</div>
-                    <div className="text-xs text-gray-400 mt-1">Columns: Child Name, Age, Guardian Mobile, Guardian Email, Weekly Session Time, Roll No, Country Code</div>
+                    <div className="text-xs text-gray-400 mt-1">Columns: Child Name, Age, Parent Mobile, Parent Email, Weekly Session Time, Roll No, Country Code</div>
                   </div>
                 )}
               </div>
@@ -964,7 +964,7 @@ export default function UsersSection({
                           <td className="p-2 font-medium text-gray-800">{r.childName || '—'}</td>
                           <td className="p-2 text-gray-600">{r.age || '—'}</td>
                           <td className="p-2 text-gray-600">{r.countryCode || '—'}</td>
-                          <td className="p-2 text-gray-600">{r.guardianMobile || '—'}</td>
+                          <td className="p-2 text-gray-600">{r.parentMobile || '—'}</td>
                           <td className="p-2 text-gray-600">{r.sessionTime ? r.sessionTime + ' min' : '—'}</td>
                           <td className="p-2 text-gray-800 font-mono font-semibold">{r.rollNo || '—'}</td>
                           <td className="p-2">

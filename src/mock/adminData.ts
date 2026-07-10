@@ -27,8 +27,8 @@ export interface AdminUser {
   id: string;
   childName: string;
   age: number;
-  guardianContact: string;
-  guardianEmail?: string;
+  parentContact: string;
+  parentEmail?: string;
   weeklySession: number;
   usageMode: 'general' | 'school';
   grade?: string;
@@ -93,8 +93,8 @@ export const MOCK_ADMIN_USERS: AdminUser[] = [
     id: 'u1',
     childName: 'Arjun Kumar',
     age: 10,
-    guardianContact: '9876543210',
-    guardianEmail: 'kumar@gmail.com',
+    parentContact: '9876543210',
+    parentEmail: 'kumar@gmail.com',
     weeklySession: 20,
     usageMode: 'school',
     grade: 'Grade 3',
@@ -106,8 +106,8 @@ export const MOCK_ADMIN_USERS: AdminUser[] = [
     id: 'u2',
     childName: 'Priya Sharma',
     age: 12,
-    guardianContact: '9123456789',
-    guardianEmail: 'sharma@gmail.com',
+    parentContact: '9123456789',
+    parentEmail: 'sharma@gmail.com',
     weeklySession: 30,
     usageMode: 'general',
     rollNo: 'PRI202',
@@ -117,8 +117,8 @@ export const MOCK_ADMIN_USERS: AdminUser[] = [
     id: 'u3',
     childName: 'Aditya Nair',
     age: 11,
-    guardianContact: '9988776655',
-    guardianEmail: 'nair@gmail.com',
+    parentContact: '9988776655',
+    parentEmail: 'nair@gmail.com',
     weeklySession: 15,
     usageMode: 'school',
     grade: 'Grade 4',

@@ -55,8 +55,8 @@ export default function LoginPage() {
       if (savedProfile) {
         try {
           const p = JSON.parse(savedProfile);
-          if (p.guardianPhone) {
-            setMobileNumber(p.guardianPhone);
+          if (p.parentPhone) {
+            setMobileNumber(p.parentPhone);
           }
         } catch (e) {
           console.error(e);
@@ -158,9 +158,9 @@ export default function LoginPage() {
     const savedProfileStr = localStorage.getItem(PROFILE_KEY);
     let p = savedProfileStr ? JSON.parse(savedProfileStr) : null;
     if (!p) {
-      p = { ...MOCK_CHILD_PROFILE, passwordEnv: 'desert', passwordAnimal: 'camel', name: 'Alex', guardianPhone: num };
+      p = { ...MOCK_CHILD_PROFILE, passwordEnv: 'desert', passwordAnimal: 'camel', name: 'Alex', parentPhone: num };
     } else {
-      p.guardianPhone = num;
+      p.parentPhone = num;
       if (!p.passwordEnv) p.passwordEnv = 'desert';
       if (!p.passwordAnimal) p.passwordAnimal = 'camel';
     }
@@ -409,7 +409,7 @@ export default function LoginPage() {
               <form onSubmit={handleChildMobileSubmit} className="flex flex-col gap-5 animate-pop-in">
                 <div>
                   <h2 className="text-2xl font-black text-gray-800 mb-1">Enter Phone Number</h2>
-                  <p className="text-gray-400 text-sm">Type in your guardian's phone number.</p>
+                  <p className="text-gray-400 text-sm">Type in your parent's phone number.</p>
                 </div>
                 <div>
                   <input

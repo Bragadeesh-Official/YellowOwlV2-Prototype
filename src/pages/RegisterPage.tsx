@@ -33,8 +33,8 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [age, setAge] = useState('9');
   const [weeklySession, setWeeklySession] = useState('20 minutes');
-  const [guardianPhone, setGuardianPhone] = useState('');
-  const [guardianEmail, setGuardianEmail] = useState('');
+  const [parentPhone, setParentPhone] = useState('');
+  const [parentEmail, setParentEmail] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [phoneError, setPhoneError] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -116,13 +116,13 @@ export default function RegisterPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!/^\d{10}$/.test(guardianPhone)) {
+    if (!/^\d{10}$/.test(parentPhone)) {
       setPhoneError('Please enter a valid 10-digit mobile number.');
       return;
     }
     setPhoneError('');
 
-    if (guardianEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guardianEmail)) {
+    if (parentEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(parentEmail)) {
       setEmailError('Please enter a valid email address.');
       return;
     }
@@ -132,8 +132,8 @@ export default function RegisterPage() {
       name: name.trim(),
       age: parseInt(age, 10),
       weeklySession: parseInt(weeklySession, 10),
-      guardianPhone,
-      guardianEmail: guardianEmail.trim() || undefined,
+      parentPhone,
+      parentEmail: parentEmail.trim() || undefined,
     });
 
     localStorage.setItem('yellowowl_newly_registered', 'true');
@@ -269,17 +269,17 @@ export default function RegisterPage() {
             </select>
           </div>
 
-          {/* 4. Guardian Mobile */}
+          {/* 4. Parent Mobile */}
           <div ref={(el) => addFieldRef(el, 3)}>
             <label className="block text-sm font-bold text-gray-700 mb-1">
-              Guardian Mobile Number
+              Parent Mobile Number
             </label>
             <input
               type="tel"
-              value={guardianPhone}
+              value={parentPhone}
               onChange={(e) => {
                 const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                setGuardianPhone(val);
+                setParentPhone(val);
                 setPhoneError('');
               }}
               placeholder="10-digit mobile number"
@@ -302,19 +302,19 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* 5. Guardian Email */}
+          {/* 5. Parent Email */}
           <div ref={(el) => addFieldRef(el, 4)}>
             <label className="block text-sm font-bold text-gray-700 mb-1">
-              Guardian Email <span className="text-gray-400 text-xs font-normal"></span>
+              Parent Email <span className="text-gray-400 text-xs font-normal"></span>
             </label>
             <input
               type="email"
-              value={guardianEmail}
+              value={parentEmail}
               onChange={(e) => {
-                setGuardianEmail(e.target.value);
+                setParentEmail(e.target.value);
                 setEmailError('');
               }}
-              placeholder="guardian@example.com"
+              placeholder="parent@example.com"
               style={{
                 ...inputStyle,
                 borderColor: emailError ? '#ef4444' : '#2AD5B4',

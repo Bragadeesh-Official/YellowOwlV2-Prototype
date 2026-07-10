@@ -25,7 +25,7 @@ export default function VerifySecretPage() {
   const bubblesRef = useRef<HTMLDivElement[]>([]);
   const successRef = useRef<HTMLDivElement>(null);
 
-  const phone = profile?.guardianPhone ?? '**********';
+  const phone = profile?.parentPhone ?? '**********';
   const maskedPhone = phone.length >= 10 ? `******${phone.slice(-4)}` : phone;
 
   useEffect(() => {
@@ -117,13 +117,13 @@ export default function VerifySecretPage() {
           </div>
           <h1 className="text-2xl font-bold text-gray-800 mb-1">Verify OTP</h1>
           <p className="text-gray-500 text-sm text-center leading-relaxed">
-            An OTP has been sent to your guardian's registered WhatsApp and Email.
+            An OTP has been sent to your parent's registered WhatsApp and Email.
           </p>
-          {profile?.guardianPhone && (
+          {profile?.parentPhone && (
             <p className="text-gray-700 text-sm font-bold mt-2">WhatsApp: +91 {maskedPhone}</p>
           )}
-          {profile?.guardianEmail && (
-            <p className="text-gray-500 text-xs font-semibold mt-0.5">Email: {profile.guardianEmail}</p>
+          {profile?.parentEmail && (
+            <p className="text-gray-500 text-xs font-semibold mt-0.5">Email: {profile.parentEmail}</p>
           )}
         </div>
 
@@ -134,7 +134,7 @@ export default function VerifySecretPage() {
         >
           <span style={{ fontSize: 22 }}>✉️</span>
           <span className="text-gray-600">
-            Check your guardian's <span className="font-bold text-gray-800">WhatsApp</span> and <span className="font-bold text-gray-800">Email</span> inbox for the OTP.
+            Check your parent's <span className="font-bold text-gray-800">WhatsApp</span> and <span className="font-bold text-gray-800">Email</span> inbox for the OTP.
           </span>
         </div>
 
@@ -224,7 +224,7 @@ export default function VerifySecretPage() {
               Your account has been created. Let's start with login!
             </p>
             <button
-              onClick={() => navigate('/login', { state: { autoOpenMobileLogin: true, phone: profile?.guardianPhone } })}
+              onClick={() => navigate('/login', { state: { autoOpenMobileLogin: true, phone: profile?.parentPhone } })}
               className="w-full text-base py-3.5 font-black rounded-2xl transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
               style={{
                 backgroundColor: '#FFEA11',

@@ -162,7 +162,7 @@ function FieldRow({ label, value }: { label: string; value: string }) {
 
 function downloadTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
-    ['Name', 'Guardian Mobile', 'Guardian Email', 'Roll No', 'Country Code'],
+    ['Name', 'Parent Mobile', 'Parent Email', 'Roll No', 'Country Code'],
     ['Arjun Kumar', '9876543210', 'parent@example.com', 'ARJ101', '+91'],
     ['Priya Sharma', '9123456789', 'sharma@example.com', 'PRI202', '+91'],
   ]);
@@ -430,8 +430,8 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
   const [studentForm, setStudentForm] = useState({
     childName: '',
     age: '9',
-    guardianContact: '',
-    guardianEmail: '',
+    parentContact: '',
+    parentEmail: '',
     weeklySession: '20',
     rollNo: '',
     countryCode: '+91'
@@ -442,7 +442,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
   const [bulkGrade, setBulkGrade] = useState<string>('');
   const [bulkSession, setBulkSession] = useState<string>('20');
   const [fileName, setFileName] = useState('');
-  const [bulkRows, setBulkRows] = useState<{ childName: string; guardianMobile: string; guardianEmail?: string; rollNo: string; countryCode: string; errors: string[] }[]>([]);
+  const [bulkRows, setBulkRows] = useState<{ childName: string; parentMobile: string; parentEmail?: string; rollNo: string; countryCode: string; errors: string[] }[]>([]);
   const [bulkError, setBulkError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -491,8 +491,8 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
           };
 
           const childName = pick('Name', 'Child Name', 'Student Name', 'Full Name');
-          const guardianMobile = pick('Guardian Mobile', 'Mobile', 'Contact', 'Guardian Contact', 'Phone');
-          const guardianEmail = pick('Guardian Email', 'Email');
+          const parentMobile = pick('Parent Mobile', 'Guardian Mobile', 'Mobile', 'Contact', 'Guardian Contact', 'Phone');
+          const parentEmail = pick('Parent Email', 'Guardian Email', 'Email');
           const rollNo = pick('Roll No', 'Roll Number', 'RollNo', 'Roll_No').toUpperCase();
           let countryCode = pick('Country Code', 'CountryCode', 'Code').trim();
           if (countryCode) {
@@ -505,8 +505,8 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
 
           const errors: string[] = [];
           if (!childName) errors.push('Name is missing');
-          if (!guardianMobile) errors.push('Mobile number is missing');
-          else if (!/^\d{10}$/.test(guardianMobile)) errors.push('Mobile must be exactly 10 digits');
+          if (!parentMobile) errors.push('Mobile number is missing');
+          else if (!/^\d{10}$/.test(parentMobile)) errors.push('Mobile must be exactly 10 digits');
 
           if (!rollNo) {
             errors.push('Roll No is missing');
@@ -518,7 +518,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
             errors.push('Invalid country code (e.g. +91)');
           }
 
-          return { childName, guardianMobile, guardianEmail, rollNo, countryCode, errors };
+          return { childName, parentMobile, parentEmail, rollNo, countryCode, errors };
         });
 
         setBulkRows(parsed);
@@ -1006,8 +1006,8 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                 setStudentForm({
                   childName: '',
                   age: '9',
-                  guardianContact: '',
-                  guardianEmail: '',
+                  parentContact: '',
+                  parentEmail: '',
                   weeklySession: '20',
                   rollNo: '',
                   countryCode: '+91',
@@ -1066,7 +1066,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #f1f5f9' }}>
-                  {['Student Name', 'Grade', 'Roll No', 'Age', 'Session duration', 'Guardian Email', 'Guardian Contact'].map(h => (
+                  {['Student Name', 'Grade', 'Roll No', 'Age', 'Session duration', 'Parent Email', 'Parent Contact'].map(h => (
                     <th key={h} style={{ textAlign: 'left', padding: '14px 16px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -1089,8 +1089,8 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                     <td style={{ padding: '14px 16px', color: '#1e293b', fontWeight: 600, fontFamily: 'monospace' }}>{u.rollNo || '—'}</td>
                     <td style={{ padding: '14px 16px', color: '#475569' }}>{u.age} yrs</td>
                     <td style={{ padding: '14px 16px', color: '#475569' }}>{u.weeklySession} mins</td>
-                    <td style={{ padding: '14px 16px', color: '#64748b' }}>{u.guardianEmail || '—'}</td>
-                    <td style={{ padding: '14px 16px', color: '#475569' }}>{u.countryCode ? `${u.countryCode} ` : ''}{u.guardianContact}</td>
+                    <td style={{ padding: '14px 16px', color: '#64748b' }}>{u.parentEmail || '—'}</td>
+                    <td style={{ padding: '14px 16px', color: '#475569' }}>{u.countryCode ? `${u.countryCode} ` : ''}{u.parentContact}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1108,8 +1108,8 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
       const errs: Record<string, string> = {};
       if (!studentGrade) errs.grade = 'Please select a Grade';
       if (!studentForm.childName.trim()) errs.childName = 'Student name is required';
-      if (!studentForm.guardianContact.trim()) errs.guardianContact = 'Guardian contact mobile is required';
-      else if (!/^\d{10}$/.test(studentForm.guardianContact.trim())) errs.guardianContact = 'Please enter a valid 10-digit mobile number';
+      if (!studentForm.parentContact.trim()) errs.parentContact = 'Parent contact mobile is required';
+      else if (!/^\d{10}$/.test(studentForm.parentContact.trim())) errs.parentContact = 'Please enter a valid 10-digit mobile number';
       if (!studentForm.rollNo.trim()) {
         errs.rollNo = 'Roll number is required';
       } else if (!validateRollNo(studentForm.rollNo)) {
@@ -1126,8 +1126,8 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
         id: genId('u'),
         childName: studentForm.childName.trim(),
         age: parseInt(studentForm.age),
-        guardianContact: studentForm.guardianContact.trim(),
-        guardianEmail: studentForm.guardianEmail.trim() || undefined,
+        parentContact: studentForm.parentContact.trim(),
+        parentEmail: studentForm.parentEmail.trim() || undefined,
         weeklySession: parseInt(studentForm.weeklySession),
         usageMode: 'school',
         grade: studentGrade,
@@ -1252,7 +1252,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
               </div>
 
               <div>
-                <label style={lbl}>Guardian Contact Mobile (10 digits) <span style={{ color: '#ef4444' }}>*</span></label>
+                <label style={lbl}>Parent Contact Mobile (10 digits) <span style={{ color: '#ef4444' }}>*</span></label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <select
                     value={studentForm.countryCode}
@@ -1272,25 +1272,25 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                   <input
                     type="text"
                     placeholder="e.g. 9876543210"
-                    value={studentForm.guardianContact}
+                    value={studentForm.parentContact}
                     onChange={e => {
                       const val = e.target.value.replace(/\D/g, '');
-                      setStudentForm(prev => ({ ...prev, guardianContact: val }));
-                      setStudentErrors(prev => ({ ...prev, guardianContact: '' }));
+                      setStudentForm(prev => ({ ...prev, parentContact: val }));
+                      setStudentErrors(prev => ({ ...prev, parentContact: '' }));
                     }}
-                    style={{ ...iStyle(studentErrors.guardianContact), flex: 1 }}
+                    style={{ ...iStyle(studentErrors.parentContact), flex: 1 }}
                   />
                 </div>
-                {studentErrors.guardianContact && <p style={errTxt}>{studentErrors.guardianContact}</p>}
+                {studentErrors.parentContact && <p style={errTxt}>{studentErrors.parentContact}</p>}
               </div>
 
               <div>
-                <label style={lbl}>Guardian Email (Optional)</label>
+                <label style={lbl}>Parent Email (Optional)</label>
                 <input
                   type="email"
                   placeholder="e.g. parent@email.com"
-                  value={studentForm.guardianEmail}
-                  onChange={e => setStudentForm(prev => ({ ...prev, guardianEmail: e.target.value }))}
+                  value={studentForm.parentEmail}
+                  onChange={e => setStudentForm(prev => ({ ...prev, parentEmail: e.target.value }))}
                   style={iStyle()}
                 />
               </div>
@@ -1337,8 +1337,8 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
         id: genId('u') + index,
         childName: r.childName,
         age: defaultAge,
-        guardianContact: r.guardianMobile,
-        guardianEmail: r.guardianEmail || undefined,
+        parentContact: r.parentMobile,
+        parentEmail: r.parentEmail || undefined,
         weeklySession: parseInt(bulkSession),
         usageMode: 'school',
         grade: bulkGrade,
@@ -1494,8 +1494,8 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                       <thead>
                         <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                           <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Name</th>
-                          <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Guardian Mobile</th>
-                          <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Guardian Email</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Parent Mobile</th>
+                          <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Parent Email</th>
                           <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Roll No</th>
                           <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Status</th>
                         </tr>
@@ -1504,8 +1504,8 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                         {bulkRows.map((r, i) => (
                           <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                             <td style={{ padding: '8px 12px', color: '#1e293b', fontWeight: 600 }}>{r.childName || '—'}</td>
-                            <td style={{ padding: '8px 12px', color: '#475569' }}>{r.guardianMobile || '—'}</td>
-                            <td style={{ padding: '8px 12px', color: '#64748b' }}>{r.guardianEmail || '—'}</td>
+                            <td style={{ padding: '8px 12px', color: '#475569' }}>{r.parentMobile || '—'}</td>
+                            <td style={{ padding: '8px 12px', color: '#64748b' }}>{r.parentEmail || '—'}</td>
                             <td style={{ padding: '8px 12px', color: '#1e293b', fontWeight: 600, fontFamily: 'monospace' }}>{r.rollNo || '—'}</td>
                             <td style={{ padding: '8px 12px' }}>
                               {r.errors.length > 0 ? (

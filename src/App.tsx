@@ -11,7 +11,7 @@ import DashboardPage from '@/pages/DashboardPage';
 import ProfilePage from '@/pages/ProfilePage';
 import SkillsPage from '@/pages/SkillsPage';
 import WeeklyAssessmentPage from '@/pages/WeeklyAssessmentPage';
-import GuardianPage from '@/pages/GuardianPage';
+import ParentPage from '@/pages/ParentPage';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -40,7 +40,7 @@ function App() {
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/skills" element={<ProtectedRoute><SkillsPage /></ProtectedRoute>} />
         <Route path="/assessment" element={<ProtectedRoute><WeeklyAssessmentPage /></ProtectedRoute>} />
-        <Route path="/guardian" element={<ProtectedRoute><GuardianPage /></ProtectedRoute>} />
+        <Route path="/parent" element={<ProtectedRoute><ParentPage /></ProtectedRoute>} />
         <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

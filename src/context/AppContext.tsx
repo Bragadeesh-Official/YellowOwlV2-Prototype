@@ -11,8 +11,8 @@ interface ChildProfile {
   avatar: string;
   interests: string[];
   weeklySession: number;
-  guardianPhone: string;
-  guardianEmail?: string;
+  parentPhone: string;
+  parentEmail?: string;
   passwordEnv: string;
   passwordAnimal: string;
   joinedDate: string;

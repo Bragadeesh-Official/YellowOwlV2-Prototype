@@ -154,7 +154,7 @@ export default function SkillsPage() {
               onClick={() => navigate('/dashboard')}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-600 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer"
             >
-              Adventure Den
+              My Challenges
             </button>
 
             <button
@@ -166,16 +166,16 @@ export default function SkillsPage() {
 
             <button
               onClick={() => navigate('/profile')}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-655 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer"
             >
               My Profile
             </button>
 
             <button
-              onClick={() => navigate('/guardian')}
+              onClick={() => navigate('/parent')}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all cursor-pointer"
             >
-              Guardian View
+              Parent View
             </button>
           </nav>
         </div>
@@ -248,7 +248,7 @@ export default function SkillsPage() {
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all"
                 >
-                  Adventure Den
+                  My Challenges
                 </button>
 
                 <button
@@ -271,11 +271,11 @@ export default function SkillsPage() {
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    navigate('/guardian');
+                    navigate('/parent');
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all"
                 >
-                  Guardian View
+                  Parent View
                 </button>
               </nav>
             </div>

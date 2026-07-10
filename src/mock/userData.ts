@@ -288,7 +288,7 @@ export const MOCK_CHILD_PROFILE = {
   avatar: '🦉',
   interests: ['sports', 'nature'],
   weeklySession: 20,
-  guardianPhone: '9876543210',
+  parentPhone: '9876543210',
   passwordEnv: 'forest',
   passwordAnimal: 'owl',
   joinedDate: '2024-01-15',
