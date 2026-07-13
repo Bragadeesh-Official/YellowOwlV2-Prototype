@@ -30,6 +30,8 @@ export default function DashboardPage() {
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0, arrowLeft: 0, arrowDirection: 'up' });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [noWeeklyChallenge, setNoWeeklyChallenge] = useState(false);
+
 
   // Defensive profile lookups to prevent crashes
   const interests = profile?.interests || [];
@@ -234,6 +236,11 @@ export default function DashboardPage() {
       completed: false,
       timeLeft: 0,
     });
+    setShowSettingsDialog(false);
+  };
+
+  const handleNoWeeklyChallenge = () => {
+    setNoWeeklyChallenge((prev) => !prev);
     setShowSettingsDialog(false);
   };
 
@@ -568,85 +575,101 @@ export default function DashboardPage() {
               zIndex: tourStep === 1 ? 9999 : undefined,
             }}
           >
-            <div className="relative z-10 text-center mb-6">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-[#158a74] text-[#FFEA11] uppercase mb-3">
-                Challenge section
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-black mb-2 tracking-tight font-display">
-                Weekly Challenge
-              </h2>
-            </div>
+            {noWeeklyChallenge ? (
+              /* ── No Assessment State ── */
+              <div className="relative z-10 flex flex-col items-center gap-4 py-4 text-center">
 
-            {/* Unified layout — same size for active, ended, and completed states */}
-            <div className="relative z-10 flex flex-col items-center gap-6 mt-6">
-
-              {/* Ring — active: countdown progress; ended: empty ring with emoji */}
-              <div className="relative w-44 h-44 flex items-center justify-center rounded-full flex-shrink-0"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: '1.5px solid rgba(255, 255, 255, 0.15)',
-                }}
-              >
-                <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 176 176">
-                  <circle
-                    cx="88" cy="88" r="72"
-                    stroke="rgba(255, 255, 255, 0.15)"
-                    strokeWidth="10" fill="transparent"
-                  />
-                  <circle
-                    cx="88" cy="88" r="72"
-                    stroke={isChallengeEnded ? (progress?.completed ? '#FFEA11' : 'rgba(255,255,255,0.3)') : '#FFEA11'}
-                    strokeWidth="10" fill="transparent"
-                    strokeDasharray="452"
-                    strokeDashoffset={isChallengeEnded ? (progress?.completed ? 0 : 452) : 452 - (remainingPercent / 100) * 452}
-                    strokeLinecap="round"
-                    style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)' }}
-                  />
-                </svg>
-
-                <div className="absolute flex flex-col items-center justify-center text-center">
-                  {isChallengeEnded ? (
-                    <img src={logo} alt="Yellow Owl" className="w-16 h-16 object-contain" />
-                  ) : (
-                    <>
-                      <span className="text-5xl font-black text-white tracking-tight leading-none">
-                        {timeLeftMinutes}
-                      </span>
-                      <span className="text-xs font-black text-[#FFEA11] uppercase tracking-widest mt-2 opacity-90">
-                        min left
-                      </span>
-                    </>
-                  )}
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-black mb-1 tracking-tight">No Weekly Assessment</h2>
+                  <p className="text-white/80 text-base font-bold">No weekly assessment assigned</p>
                 </div>
+
+                <p className="text-white/60 text-sm font-semibold">Check back later for your next challenge!</p>
               </div>
-
-              <p className="text-base font-bold text-white/80 text-center">
-                {isChallengeEnded
-                  ? 'Challenge Completed! All challenges done for this week ✨'
-                  : 'Complete the weekly challenge before the timer runs out!'}
-              </p>
-
-              {!isChallengeEnded && (
-                <button
-                  type="button"
-                  className="group relative text-lg sm:text-xl font-black py-4 px-12 rounded-full transition-all duration-300 w-full md:w-auto text-center"
-                  style={{
-                    backgroundColor: '#FFEA11',
-                    color: '#0f172a',
-                    boxShadow: '0 5px 0 #A88800',
-                    transform: 'translateY(-2px)',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => navigate('/assessment')}
-                >
-                  <span className="relative flex items-center justify-center gap-2">
-                    {hasProgress ? 'Continue Challenge!' : 'Start Challenge! ➔'}
+            ) : (
+              /* ── Normal Challenge State ── */
+              <>
+                <div className="relative z-10 text-center mb-6">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-widest bg-[#158a74] text-[#FFEA11] uppercase mb-3">
+                    Challenge section
                   </span>
-                </button>
-              )}
+                  <h2 className="text-3xl sm:text-4xl font-black mb-2 tracking-tight font-display">
+                    Weekly Challenge
+                  </h2>
+                </div>
 
-            </div>
+                {/* Unified layout — same size for active, ended, and completed states */}
+                <div className="relative z-10 flex flex-col items-center gap-6 mt-6">
+
+                  {/* Ring — active: countdown progress; ended: empty ring with emoji */}
+                  <div className="relative w-44 h-44 flex items-center justify-center rounded-full flex-shrink-0"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      border: '1.5px solid rgba(255, 255, 255, 0.15)',
+                    }}
+                  >
+                    <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 176 176">
+                      <circle
+                        cx="88" cy="88" r="72"
+                        stroke="rgba(255, 255, 255, 0.15)"
+                        strokeWidth="10" fill="transparent"
+                      />
+                      <circle
+                        cx="88" cy="88" r="72"
+                        stroke={isChallengeEnded ? (progress?.completed ? '#FFEA11' : 'rgba(255,255,255,0.3)') : '#FFEA11'}
+                        strokeWidth="10" fill="transparent"
+                        strokeDasharray="452"
+                        strokeDashoffset={isChallengeEnded ? (progress?.completed ? 0 : 452) : 452 - (remainingPercent / 100) * 452}
+                        strokeLinecap="round"
+                        style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                      />
+                    </svg>
+
+                    <div className="absolute flex flex-col items-center justify-center text-center">
+                      {isChallengeEnded ? (
+                        <img src={logo} alt="Yellow Owl" className="w-16 h-16 object-contain" />
+                      ) : (
+                        <>
+                          <span className="text-5xl font-black text-white tracking-tight leading-none">
+                            {timeLeftMinutes}
+                          </span>
+                          <span className="text-xs font-black text-[#FFEA11] uppercase tracking-widest mt-2 opacity-90">
+                            min left
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-base font-bold text-white/80 text-center">
+                    {isChallengeEnded
+                      ? 'Challenge Completed! All challenges done for this week ✨'
+                      : 'Complete the weekly challenge before the timer runs out!'}
+                  </p>
+
+                  {!isChallengeEnded && (
+                    <button
+                      type="button"
+                      className="group relative text-lg sm:text-xl font-black py-4 px-12 rounded-full transition-all duration-300 w-full md:w-auto text-center"
+                      style={{
+                        backgroundColor: '#FFEA11',
+                        color: '#0f172a',
+                        boxShadow: '0 5px 0 #A88800',
+                        transform: 'translateY(-2px)',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => navigate('/assessment')}
+                    >
+                      <span className="relative flex items-center justify-center gap-2">
+                        {hasProgress ? 'Continue Challenge!' : 'Start Challenge! ➔'}
+                      </span>
+                    </button>
+                  )}
+
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -708,6 +731,16 @@ export default function DashboardPage() {
                 className="w-full text-left text-xs font-black bg-orange-50 hover:bg-orange-100 text-orange-600 px-3.5 py-2.5 rounded-2xl border border-orange-200/50 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
               >
                 ⏰ Complete Time (0m)
+              </button>
+
+              <button
+                onClick={handleNoWeeklyChallenge}
+                className={`w-full text-left text-xs font-black px-3.5 py-2.5 rounded-2xl border transition-all flex items-center gap-2 cursor-pointer active:scale-95 ${noWeeklyChallenge
+                  ? 'bg-purple-100 hover:bg-purple-200 text-purple-700 border-purple-300/50'
+                  : 'bg-purple-50 hover:bg-purple-100 text-purple-600 border-purple-200/50'
+                  }`}
+              >
+                {noWeeklyChallenge ? '📅 Show Weekly Challenge' : '📅 No Weekly Challenge'}
               </button>
             </div>
           </div>
@@ -791,9 +824,9 @@ export default function DashboardPage() {
                   ? "This is the Weekly Assessment box! Solve your weekly challenges here to unlock your potential and earn stars."
                   : tourStep === 2
                     ? "Track your growth across various abilities here! Click this link to see your dynamic progress graphs."
-                  : tourStep === 3
-                    ? "Customize your name, select your avatar, and manage your learning interests to tailor the challenges."
-                    : "A secure, parents-only view displaying in-depth analytical growth patterns and specific next steps for you."}
+                    : tourStep === 3
+                      ? "Customize your name, select your avatar, and manage your learning interests to tailor the challenges."
+                      : "A secure, parents-only view displaying in-depth analytical growth patterns and specific next steps for you."}
               </p>
 
               <div className="flex items-center justify-between">

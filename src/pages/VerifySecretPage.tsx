@@ -18,6 +18,9 @@ export default function VerifySecretPage() {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [toast, setToast] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const owlRef = useRef<HTMLDivElement>(null);
@@ -73,6 +76,24 @@ export default function VerifySecretPage() {
     }
 
     setSuccess(true);
+  };
+
+  const handleResendOtp = () => {
+    if (resendCooldown > 0) return;
+    // Show toast
+    setToast(true);
+    setTimeout(() => setToast(false), 3500);
+    // Start 30s cooldown
+    setResendCooldown(30);
+    cooldownRef.current = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownRef.current!);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   return (
@@ -182,7 +203,72 @@ export default function VerifySecretPage() {
           <button type="submit" className="btn-primary w-full">
             Verify & Continue
           </button>
+
+          {/* Resend OTP */}
+          <div className="text-center mt-1">
+            <button
+              type="button"
+              onClick={handleResendOtp}
+              disabled={resendCooldown > 0}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
+                color: resendCooldown > 0 ? '#9ca3af' : '#1FBFA0',
+                fontSize: '0.875rem',
+                fontWeight: 700,
+                fontFamily: 'Andika, system-ui, sans-serif',
+                textDecoration: 'underline',
+                textUnderlineOffset: 3,
+                transition: 'color 0.2s',
+              }}
+            >
+              {resendCooldown > 0
+                ? `Resend OTP in ${resendCooldown}s`
+                : 'Resend OTP'}
+            </button>
+          </div>
         </form>
+      </div>
+
+      {/* Resend OTP Toast */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 28,
+          left: '50%',
+          transform: `translateX(-50%) translateY(${toast ? '0' : '24px'})`,
+          opacity: toast ? 1 : 0,
+          transition: 'opacity 0.35s ease, transform 0.35s ease',
+          pointerEvents: 'none',
+          zIndex: 200,
+          minWidth: 260,
+          maxWidth: 'calc(100vw - 32px)',
+        }}
+      >
+        <div
+          style={{
+            background: '#1e293b',
+            color: '#fff',
+            borderRadius: 16,
+            padding: '12px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+          }}
+        >
+          <span style={{ fontSize: 20 }}>✅</span>
+          <div>
+            <p style={{ margin: 0, fontWeight: 900, fontSize: '0.875rem', fontFamily: 'Andika, system-ui, sans-serif' }}>
+              OTP Sent!
+            </p>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>
+              OTP has been sent to your parent's Email & WhatsApp.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Success Dialog Box Modal */}

@@ -31,6 +31,7 @@ export default function RegisterPage() {
   const { register } = useApp();
 
   const [name, setName] = useState('');
+  const [dob, setDob] = useState('');
   const [age, setAge] = useState('9');
   const [weeklySession, setWeeklySession] = useState('20 minutes');
   const [parentPhone, setParentPhone] = useState('');
@@ -38,6 +39,7 @@ export default function RegisterPage() {
   const [agreed, setAgreed] = useState(false);
   const [phoneError, setPhoneError] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [dobError, setDobError] = useState('');
 
   const cardRef = useRef<HTMLDivElement>(null);
   const owlRef = useRef<HTMLDivElement>(null);
@@ -116,6 +118,12 @@ export default function RegisterPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!dob) {
+      setDobError('Please enter your date of birth.');
+      return;
+    }
+    setDobError('');
+
     if (!/^\d{10}$/.test(parentPhone)) {
       setPhoneError('Please enter a valid 10-digit mobile number.');
       return;
@@ -130,6 +138,7 @@ export default function RegisterPage() {
 
     register({
       name: name.trim(),
+      dob,
       age: parseInt(age, 10),
       weeklySession: parseInt(weeklySession, 10),
       parentPhone,
@@ -219,8 +228,40 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* 2. Age */}
+          {/* 2. Date of Birth */}
           <div ref={(el) => addFieldRef(el, 1)}>
+            <label className="block text-sm font-bold text-gray-700 mb-1">
+              Date of Birth <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <input
+              type="date"
+              value={dob}
+              max={new Date().toISOString().split('T')[0]}
+              onChange={(e) => {
+                setDob(e.target.value);
+                setDobError('');
+              }}
+              required
+              style={{
+                ...inputStyle,
+                borderColor: dobError ? '#ef4444' : '#2AD5B4',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#FFEA11';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,234,17,0.25)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = dobError ? '#ef4444' : '#2AD5B4';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            />
+            {dobError && (
+              <p className="mt-1 text-red-500 text-xs font-semibold">{dobError}</p>
+            )}
+          </div>
+
+          {/* 3. Age */}
+          <div ref={(el) => addFieldRef(el, 2)}>
             <label className="block text-sm font-bold text-gray-700 mb-1">Age</label>
             <select
               value={age}
@@ -243,8 +284,8 @@ export default function RegisterPage() {
             </select>
           </div>
 
-          {/* 3. Weekly Session Time */}
-          <div ref={(el) => addFieldRef(el, 2)}>
+          {/* 4. Weekly Session Time */}
+          <div ref={(el) => addFieldRef(el, 3)}>
             <label className="block text-sm font-bold text-gray-700 mb-1">
               Weekly Session Time
             </label>
@@ -269,8 +310,8 @@ export default function RegisterPage() {
             </select>
           </div>
 
-          {/* 4. Parent Mobile */}
-          <div ref={(el) => addFieldRef(el, 3)}>
+          {/* 5. Parent Mobile */}
+          <div ref={(el) => addFieldRef(el, 4)}>
             <label className="block text-sm font-bold text-gray-700 mb-1">
               Parent Mobile Number
             </label>
@@ -302,8 +343,8 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* 5. Parent Email */}
-          <div ref={(el) => addFieldRef(el, 4)}>
+          {/* 6. Parent Email */}
+          <div ref={(el) => addFieldRef(el, 5)}>
             <label className="block text-sm font-bold text-gray-700 mb-1">
               Parent Email <span className="text-gray-400 text-xs font-normal"></span>
             </label>
@@ -333,9 +374,9 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* 6. Terms checkbox */}
+          {/* 7. Terms checkbox */}
           <div
-            ref={(el) => addFieldRef(el, 5)}
+            ref={(el) => addFieldRef(el, 6)}
             className="flex items-start gap-3 p-3 rounded-xl"
             style={{ backgroundColor: '#f0fdf9', border: '1.5px solid #2AD5B4' }}
           >
@@ -359,7 +400,7 @@ export default function RegisterPage() {
           </div>
 
           {/* Submit */}
-          <div ref={(el) => addFieldRef(el, 6)}>
+          <div ref={(el) => addFieldRef(el, 7)}>
             <button
               type="submit"
               className="btn-primary w-full"
