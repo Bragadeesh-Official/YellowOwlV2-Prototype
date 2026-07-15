@@ -2,17 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { useApp } from '@/context/AppContext';
-import { PAST_ASSESSMENTS } from '@/mock/assessmentData';
+import { PAST_ASSESSMENTS, WEEKLY_ASSESSMENT } from '@/mock/assessmentData';
 import logo from '@/assets/yellowowllogo.png';
 
 type Assessment = (typeof PAST_ASSESSMENTS)[number];
 type Challenge = Assessment['challenges'][number];
-
-function getScoreColor(score: number): { bg: string; text: string } {
-  if (score >= 80) return { bg: '#dcfce7', text: '#16a34a' };
-  if (score >= 60) return { bg: '#fefce8', text: '#ca8a04' };
-  return { bg: '#fee2e2', text: '#dc2626' };
-}
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-IN', {
@@ -22,77 +16,227 @@ function formatDate(dateStr: string): string {
   });
 }
 
-
 function ChallengeDetail({ ch }: { ch: Challenge }) {
-  const [readMore, setReadMore] = useState(false);
-
-  const descriptiveAnswer = 'descriptiveAnswer' in ch ? ch.descriptiveAnswer : null;
-  const truncated =
-    descriptiveAnswer && descriptiveAnswer.length > 100
-      ? descriptiveAnswer.slice(0, 100) + '...'
-      : descriptiveAnswer;
+  const fullChallenge = WEEKLY_ASSESSMENT.find((w) => w.id === ch.id);
+  if (!fullChallenge) return null;
 
   return (
     <div
       style={{
-        padding: '10px 12px',
-        borderRadius: 12,
+        padding: '16px',
+        borderRadius: 20,
         background: '#f9fafb',
-        marginBottom: 8,
+        border: '1px solid #f3f4f6',
+        marginBottom: 16,
       }}
     >
-      <p style={{ fontWeight: 700, fontSize: 14, color: '#374151', margin: '0 0 4px' }}>
-        {ch.title}
-      </p>
-
-      {'mcqScore' in ch && 'mcqTotal' in ch && (
-        <p style={{ fontSize: 13, color: '#6b7280', margin: '2px 0' }}>
-          MCQ: Completed 🎯
-          {'twistCorrect' in ch && (
-            <span
-              style={{
-                marginLeft: 8,
-                fontWeight: 700,
-                color: '#8b5cf6',
-              }}
-            >
-              + Twist Completed 🌀
-            </span>
-          )}
-        </p>
-      )}
-
-      {'ideas' in ch && ch.ideas && (
-        <p style={{ fontSize: 13, color: '#6b7280', margin: '2px 0' }}>
-          Ideas shared: {ch.ideas.length}
-        </p>
-      )}
-
-      {descriptiveAnswer && (
-        <div style={{ marginTop: 4 }}>
-          <p style={{ fontSize: 13, color: '#4b5563', margin: '2px 0', fontStyle: 'italic' }}>
-            "{readMore ? descriptiveAnswer : truncated}"
-          </p>
-          {descriptiveAnswer.length > 100 && (
-            <button
-              type="button"
-              onClick={() => setReadMore((v) => !v)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#2AD5B4',
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: 'pointer',
-                padding: 0,
-                marginTop: 2,
-              }}
-            >
-              {readMore ? 'Show less' : 'Read more'}
-            </button>
-          )}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="text-2xl">{fullChallenge.emoji}</span>
+        <div>
+          <h4 className="font-extrabold text-gray-800 text-base leading-snug">
+            {fullChallenge.title}
+          </h4>
+          <span className="text-[10px] uppercase font-black tracking-wider text-gray-400">
+            {fullChallenge.theme}
+          </span>
         </div>
-      )}
+      </div>
+
+      <div className="space-y-6">
+        {/* Render MCQ questions */}
+        {fullChallenge.questions
+          .filter((q) => q.type === 'mcq')
+          .map((mcqQ, qi) => {
+            const mcqScore = 'mcqScore' in ch ? (ch.mcqScore as number) : 0;
+            // Determine if correct based on our mcqScore logic:
+            const isCorrect = qi < mcqScore;
+            const userChoiceIndex = isCorrect
+              ? mcqQ.options.findIndex((_, idx) => idx === mcqQ.correct)
+              : (mcqQ.correct + 1) % mcqQ.options.length;
+
+            return (
+              <div key={mcqQ.question} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+                <p className="font-extrabold text-gray-850 text-sm leading-snug">
+                  {mcqQ.question}
+                </p>
+                <div className="space-y-2">
+                  <div className="text-xs">
+                    <span className="font-black text-gray-400 block mb-1">Your Child's Answer:</span>
+                    <div
+                      className={`p-3 rounded-2xl border-2 flex items-center justify-between text-sm font-bold ${
+                        isCorrect
+                          ? 'bg-teal-50 border-teal-200 text-teal-800'
+                          : 'bg-sky-50 border-sky-200 text-sky-850'
+                      }`}
+                    >
+                      <span>{mcqQ.options[userChoiceIndex] || 'Not Answered'}</span>
+                      {isCorrect ? (
+                        <span className="text-xs bg-teal-600 text-white px-2 py-0.5 rounded-full font-black">
+                          BEST
+                        </span>
+                      ) : (
+                        <span className="text-xs bg-sky-600 text-white px-2 py-0.5 rounded-full font-black">
+                          NICE TRY
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {!isCorrect && (
+                    <div className="text-xs">
+                      <span className="font-black text-gray-400 block mb-1">Best Choice:</span>
+                      <div className="p-3 rounded-2xl border-2 border-teal-200 bg-teal-50/60 text-teal-900 text-sm font-bold flex items-center justify-between">
+                        <span>{mcqQ.options[mcqQ.correct]}</span>
+                        <span className="text-xs bg-teal-600 text-white px-2 py-0.5 rounded-full font-black">
+                          BEST
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-3 rounded-2xl bg-teal-50/60 border border-teal-100/80 text-xs leading-relaxed font-medium flex gap-2 items-start">
+                  <img
+                    src={logo}
+                    alt="owl"
+                    className="w-7 h-7 object-contain flex-shrink-0"
+                  />
+                  <div>
+                    <span className="font-black text-teal-900 block mb-0.5">Explanation:</span>
+                    {mcqQ.explanation}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+        {/* Render Descriptive question */}
+        {(() => {
+          const dq = fullChallenge.questions.find((q) => q.type === 'descriptive');
+          const descriptiveAnswer = 'descriptiveAnswer' in ch ? (ch.descriptiveAnswer as string) : null;
+          if (!dq || !descriptiveAnswer) return null;
+
+          return (
+            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+              <p className="font-extrabold text-gray-850 text-sm leading-snug">
+                {dq.question}
+              </p>
+              <div className="space-y-2">
+                <div className="text-xs">
+                  <span className="font-black text-gray-400 block mb-1">Your Child's Answer:</span>
+                  <div className="p-3 rounded-2xl border-2 border-amber-200 bg-amber-50/30 text-gray-700 text-sm font-bold italic leading-relaxed">
+                    "{descriptiveAnswer}"
+                  </div>
+                </div>
+                {dq.sampleAnswer && (
+                  <div className="p-3 rounded-2xl bg-sky-50 border-2 border-sky-100 text-xs leading-relaxed font-medium flex gap-2 items-start">
+                    <span className="text-xl flex-shrink-0">💡</span>
+                    <div>
+                      <span className="font-black text-sky-900 block mb-0.5">Spark your imagination:</span>
+                      {dq.sampleAnswer}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Render Twist Question */}
+        {(() => {
+          const twistQuestion = fullChallenge.twistQuestion;
+          const twistAnswer = 'twistAnswer' in ch ? (ch.twistAnswer as number) : null;
+          const twistCorrect = 'twistCorrect' in ch ? (ch.twistCorrect as boolean) : false;
+          if (!twistQuestion || twistAnswer === null) return null;
+
+          return (
+            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🌀</span>
+                <span className="font-black text-purple-905 text-sm">Surprise Twist:</span>
+              </div>
+              <p className="font-extrabold text-gray-855 text-sm leading-snug">
+                {twistQuestion.question}
+              </p>
+              <div className="space-y-2">
+                <div className="text-xs">
+                  <span className="font-black text-gray-400 block mb-1">Your Child's Answer:</span>
+                  <div
+                    className={`p-3 rounded-2xl border-2 flex items-center justify-between text-sm font-bold ${
+                      twistCorrect
+                        ? 'bg-purple-50 border-purple-200 text-purple-800'
+                        : 'bg-indigo-50 border-indigo-200 text-indigo-800'
+                    }`}
+                  >
+                    <span>{twistQuestion.options[twistAnswer]}</span>
+                    {twistCorrect ? (
+                      <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-black">
+                        BEST
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-indigo-600 text-white px-2 py-0.5 rounded-full font-black">
+                        NICE TRY
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {!twistCorrect && (
+                  <div className="text-xs">
+                    <span className="font-black text-gray-400 block mb-1">Best Choice:</span>
+                    <div className="p-3 rounded-2xl border-2 border-purple-200 bg-purple-50/60 text-purple-900 text-sm font-bold flex items-center justify-between">
+                      <span>{twistQuestion.options[twistQuestion.correct]}</span>
+                      <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-black">
+                        BEST
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 rounded-2xl bg-purple-50 border border-purple-100 text-xs leading-relaxed font-medium flex gap-2 items-start">
+                <img
+                  src={logo}
+                  alt="owl"
+                  className="w-7 h-7 object-contain flex-shrink-0"
+                />
+                <div>
+                  <span className="font-black text-purple-900 block mb-0.5">Explanation:</span>
+                  {twistQuestion.explanation}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Render Ideas / Brainstorming question */}
+        {(() => {
+          const ideas = 'ideas' in ch ? (ch.ideas as string[]) : null;
+          if (!ideas || ideas.length === 0) return null;
+
+          return (
+            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">💡</span>
+                <span className="font-black text-violet-800 text-sm">Brainstormed Ideas:</span>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
+                {ideas.map((idea, i) => (
+                  <div
+                    key={i}
+                    className="flex gap-3 text-sm text-gray-700 bg-white p-3 rounded-2xl border-2 border-violet-100 font-semibold shadow-sm"
+                  >
+                    <span className="font-black text-violet-600 bg-violet-50 w-6 h-6 flex items-center justify-center rounded-full text-xs border border-violet-200 flex-shrink-0">
+                      {i + 1}
+                    </span>
+                    <span className="flex-1 leading-snug">{idea}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
     </div>
   );
 }
@@ -444,7 +588,6 @@ export default function ParentPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {PAST_ASSESSMENTS.map((assessment, idx) => {
                 const isOpen = expanded === assessment.id;
-                const sc = getScoreColor(assessment.score);
                 return (
                   <div
                     key={assessment.id}
@@ -488,23 +631,24 @@ export default function ParentPage() {
                           <p
                             style={{ margin: '2px 0 0', fontSize: 13, color: '#9ca3af' }}
                           >
-                            {formatDate(assessment.date)} · {assessment.timeTaken} min
+                            {formatDate(assessment.date)} · Completed
                           </p>
                         </div>
                       </div>
                       <span
                         ref={(el) => { if (el) scoreBadgeRefs.current[idx] = el; }}
                         style={{
-                          background: sc.bg,
-                          color: sc.text,
+                          background: '#f0fdfa',
+                          color: '#0d9488',
                           borderRadius: 20,
-                          padding: '3px 12px',
-                          fontSize: 14,
+                          padding: '4px 14px',
+                          fontSize: 13,
                           fontWeight: 800,
                           flexShrink: 0,
+                          border: '1.5px solid #ccfbf1',
                         }}
                       >
-                        {assessment.score}%
+                        ⏱️ {assessment.timeTaken} min
                       </span>
                       <span
                         style={{

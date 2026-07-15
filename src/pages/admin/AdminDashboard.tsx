@@ -1,23 +1,31 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+
 import { ADMIN_SESSION_KEY, MOCK_SCHOOLS, MOCK_ADMIN_USERS, type School, type AdminUser } from '@/mock/adminData';
 import SchoolsSection from './SchoolsSection';
 import UsersSection from './UsersSection';
 import AssessmentSection from './AssessmentSection';
+import AnalysisSection from './AnalysisSection';
 import logo from '@/assets/yellowowllogo.png';
 
-type Section = 'schools' | 'users' | 'assessment';
+type Section = 'schools' | 'users' | 'assessment' | 'analysis' | 'analysis_skills';
 
 const NAV_ITEMS: { key: Section; label: string; short: string }[] = [
   { key: 'schools', label: 'Tenants', short: 'Te' },
   { key: 'users', label: 'Users', short: 'Us' },
+  { key: 'analysis', label: 'User Assessment Analysis', short: 'Ua' },
+  { key: 'analysis_skills', label: 'User Skill Analysis', short: 'Us' },
   { key: 'assessment', label: 'Weekly Assessment', short: 'As' },
 ];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [section, setSection] = useState<Section>('schools');
+  const location = useLocation();
+  const [section, setSection] = useState<Section>(
+    (location.state as { section?: Section } | null)?.section ?? 'schools'
+  );
   const [collapsed, setCollapsed] = useState(false);
+
 
   // Lifted and persistent states
   const [schools, setSchools] = useState<School[]>(() => {
@@ -151,6 +159,12 @@ export default function AdminDashboard() {
         )}
         {section === 'assessment' && (
           <AssessmentSection schools={schools} />
+        )}
+        {section === 'analysis' && (
+          <AnalysisSection users={users} schools={schools} mode="assessments" />
+        )}
+        {section === 'analysis_skills' && (
+          <AnalysisSection users={users} schools={schools} mode="skills" />
         )}
       </main>
     </div>

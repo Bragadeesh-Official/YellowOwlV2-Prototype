@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { useApp } from '@/context/AppContext';
 import logo from '@/assets/yellowowllogo.png';
+import challenge1Img from '@/assets/Challenge1.png';
+import challenge2Img from '@/assets/Challenge2.png';
 import {
   WEEKLY_ASSESSMENT,
 } from '@/mock/assessmentData';
@@ -14,7 +16,7 @@ import type {
   IdeasQuestion,
 } from '@/mock/assessmentData';
 
-const SUPER_SKILL_DESCRIPTIONS: Record<string, { label: string; emoji: string; color: string }> = {
+export const SUPER_SKILL_DESCRIPTIONS: Record<string, { label: string; emoji: string; color: string }> = {
   thinking: {
     label: "Looking closer",
     emoji: "🧠",
@@ -50,27 +52,27 @@ interface ChallengeAnswer {
 type AnswersMap = Record<number, ChallengeAnswer>;
 
 const BUBBLES = [
-  { size: 150, top: '5%',  left: '5%',  bg: '#2AD5B4' },
+  { size: 150, top: '5%', left: '5%', bg: '#2AD5B4' },
   { size: 100, top: '15%', left: '80%', bg: '#FFEA11' },
   { size: 125, top: '28%', left: '42%', bg: '#2AD5B4' },
   { size: 180, top: '42%', left: '10%', bg: '#FFEA11' },
   { size: 130, top: '55%', left: '75%', bg: '#FFEA11' },
-  { size: 95,  top: '68%', left: '32%', bg: '#2AD5B4' },
+  { size: 95, top: '68%', left: '32%', bg: '#2AD5B4' },
   { size: 140, top: '80%', left: '60%', bg: '#2AD5B4' },
   { size: 110, top: '92%', left: '15%', bg: '#FFEA11' },
   // additional circles
-  { size: 70,  top: '3%',  left: '55%', bg: '#FFEA11' },
-  { size: 90,  top: '10%', left: '30%', bg: '#2AD5B4' },
+  { size: 70, top: '3%', left: '55%', bg: '#FFEA11' },
+  { size: 90, top: '10%', left: '30%', bg: '#2AD5B4' },
   { size: 200, top: '20%', left: '88%', bg: '#2AD5B4' },
-  { size: 60,  top: '35%', left: '63%', bg: '#FFEA11' },
+  { size: 60, top: '35%', left: '63%', bg: '#FFEA11' },
   { size: 115, top: '48%', left: '50%', bg: '#2AD5B4' },
-  { size: 80,  top: '60%', left: '5%',  bg: '#FFEA11' },
+  { size: 80, top: '60%', left: '5%', bg: '#FFEA11' },
   { size: 220, top: '65%', left: '85%', bg: '#FFEA11' },
-  { size: 75,  top: '72%', left: '48%', bg: '#2AD5B4' },
+  { size: 75, top: '72%', left: '48%', bg: '#2AD5B4' },
   { size: 160, top: '85%', left: '35%', bg: '#FFEA11' },
-  { size: 85,  top: '88%', left: '78%', bg: '#2AD5B4' },
+  { size: 85, top: '88%', left: '78%', bg: '#2AD5B4' },
   { size: 105, top: '96%', left: '55%', bg: '#2AD5B4' },
-  { size: 65,  top: '50%', left: '25%', bg: '#FFEA11' },
+  { size: 65, top: '50%', left: '25%', bg: '#FFEA11' },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -93,7 +95,7 @@ function getIdeasQuestion(challenge: Challenge): IdeasQuestion | undefined {
   return challenge.questions.find((q): q is IdeasQuestion => q.type === 'ideas');
 }
 
-function isMCQOrTwistChallenge(challenge: Challenge): boolean {
+export function isMCQOrTwistChallenge(challenge: Challenge): boolean {
   return challenge.questions.some((q) => q.type === 'mcq');
 }
 
@@ -151,6 +153,7 @@ function MCQOption({
 export default function WeeklyAssessmentPage() {
   const navigate = useNavigate();
   const { profile, saveAssessmentProgress, assessmentProgress } = useApp();
+  const isSenior = profile && profile.age >= 12;
 
   // redirect if not logged in
   useEffect(() => {
@@ -199,11 +202,15 @@ export default function WeeklyAssessmentPage() {
   const [showContinueAfterTwist, setShowContinueAfterTwist] = useState(false);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [, setExplanationVisible] = useState<boolean[]>([]);
+  const [showSurprise, setShowSurprise] = useState(false);
 
   // Refs
   const cardRef = useRef<HTMLDivElement>(null);
+  const rightBoxRef = useRef<HTMLDivElement>(null);
   const twistBannerRef = useRef<HTMLDivElement>(null);
   const twistCardRef = useRef<HTMLDivElement>(null);
+  const surpriseOverlayRef = useRef<HTMLDivElement>(null);
+  const surpriseCardRef = useRef<HTMLDivElement>(null);
   const explanationRefs = useRef<(HTMLDivElement | null)[]>([]);
   const optionRefs = useRef<(HTMLButtonElement | null)[][]>([]);
   const confettiRef = useRef<HTMLDivElement>(null);
@@ -234,7 +241,7 @@ export default function WeeklyAssessmentPage() {
       }
       return q;
     });
-    if (currentChallenge.twistQuestion) {
+    if (currentChallenge.twistQuestion && showTwist) {
       list.push({ ...currentChallenge.twistQuestion, type: 'twist' } as any);
     }
     return list;
@@ -530,6 +537,7 @@ export default function WeeklyAssessmentPage() {
   };
 
   // ── "Lock Answer & Continue" ──
+  /*
   const handleLockAndContinue = () => {
     if (isMCQOrTwistChallenge(currentChallenge) && currentChallenge.twistQuestion) {
       // Reveal the twist
@@ -557,6 +565,65 @@ export default function WeeklyAssessmentPage() {
       }, 50);
     } else {
       openFeedbackPage();
+    }
+  };
+  */
+
+  const triggerSurpriseTwist = () => {
+    setShowSurprise(true);
+    setTimeout(() => {
+      if (surpriseOverlayRef.current) {
+        gsap.fromTo(surpriseOverlayRef.current,
+          { opacity: 0 },
+          { opacity: 1, duration: 0.4, ease: 'power2.out' }
+        );
+      }
+      if (surpriseCardRef.current) {
+        gsap.fromTo(surpriseCardRef.current,
+          { scale: 0.7, y: 100, rotation: -10, opacity: 0 },
+          { scale: 1, y: 0, rotation: 0, opacity: 1, duration: 0.6, ease: 'back.out(1.5)', delay: 0.1 }
+        );
+      }
+    }, 50);
+  };
+
+  const handleRevealTwist = () => {
+    if (surpriseOverlayRef.current) {
+      gsap.to(surpriseOverlayRef.current, {
+        opacity: 0,
+        duration: 0.3,
+        onComplete: () => {
+          setShowSurprise(false);
+          setShowTwist(true);
+          // With showTwist=true, the next render will have challengeQuestions of length 4.
+          // We transition activeQuestionIndex to index 3 (the Twist question).
+          setActiveQuestionIndex(3);
+          setTimeout(() => {
+            if (twistBannerRef.current) {
+              gsap.from(twistBannerRef.current, {
+                y: 40,
+                opacity: 0,
+                scale: 0.8,
+                duration: 0.5,
+                ease: 'back.out(1.7)',
+              });
+            }
+            if (twistCardRef.current) {
+              gsap.from(twistCardRef.current, {
+                y: 40,
+                opacity: 0,
+                duration: 0.4,
+                delay: 0.15,
+                ease: 'power2.out',
+              });
+            }
+          }, 50);
+        }
+      });
+    } else {
+      setShowSurprise(false);
+      setShowTwist(true);
+      setActiveQuestionIndex(3);
     }
   };
 
@@ -597,6 +664,7 @@ export default function WeeklyAssessmentPage() {
   };
 
   // ── Lock button enablement ──
+  /*
   const isLockEnabled = (): boolean => {
     if (isMCQOrTwistChallenge(currentChallenge)) {
       const mcqs = getMCQQuestions(currentChallenge);
@@ -607,24 +675,25 @@ export default function WeeklyAssessmentPage() {
     }
     return true; // ideas challenge — always allow
   };
+  */
 
   const animateQuestionTransition = (direction: 'forward' | 'back', onMidpoint: () => void) => {
-    if (!cardRef.current) {
+    if (!rightBoxRef.current) {
       onMidpoint();
       return;
     }
     const exitX = direction === 'forward' ? -150 : 150;
     const enterX = direction === 'forward' ? 150 : -150;
-    gsap.to(cardRef.current, {
+    gsap.to(rightBoxRef.current, {
       x: exitX,
       opacity: 0,
       duration: 0.2,
       ease: 'power2.in',
       onComplete: () => {
         onMidpoint();
-        if (cardRef.current) {
+        if (rightBoxRef.current) {
           gsap.fromTo(
-            cardRef.current,
+            rightBoxRef.current,
             { x: enterX, opacity: 0 },
             { x: 0, opacity: 1, duration: 0.25, ease: 'power2.out' }
           );
@@ -912,7 +981,7 @@ export default function WeeklyAssessmentPage() {
               {/* Header */}
               <div className="text-center pb-4 border-b-2 border-dashed border-gray-200 pt-3 mb-4">
                 <h2 className="text-xl font-black text-gray-800">
-                  {isIdeas ? 'Genius Brainstormer!' : 'Great Job, Adventurer! 🏆'}
+                  {isIdeas ? 'Genius Brainstormer!' : 'Great Job, Adventurer!'}
                 </h2>
                 <p className="text-[10px] font-extrabold text-gray-400 mt-1 uppercase tracking-widest">
                   Feedback · <span className="text-teal-600">{currentChallenge.title}</span>
@@ -934,10 +1003,7 @@ export default function WeeklyAssessmentPage() {
                       return (
                         <div className="space-y-3">
                           <div className="flex items-center justify-between flex-wrap gap-2">
-                            <span className="font-black text-[10px] tracking-widest bg-gray-100 text-gray-500 uppercase px-2.5 py-1 rounded-full border border-gray-200/50">🔍 Mystery Check {qi + 1}</span>
-                            <span className={`font-black text-[10px] px-3 py-1 rounded-full border-2 ${isCorrect ? 'bg-teal-50 border-teal-200 text-teal-700' : 'bg-sky-50 border-sky-200 text-sky-700'}`}>
-                              {isCorrect ? '✨ Best Choice!' : '🌟 Great Effort!'}
-                            </span>
+
                           </div>
                           <p className="font-black text-gray-800 text-sm leading-snug">{mcqQ.question}</p>
                           <div className="space-y-2">
@@ -945,7 +1011,7 @@ export default function WeeklyAssessmentPage() {
                               <span className="font-extrabold text-gray-400 block mb-1">Your Choice:</span>
                               <div className={`p-3 rounded-2xl border-2 flex items-center justify-between text-sm font-bold ${isCorrect ? 'bg-teal-50 border-teal-200 text-teal-800' : 'bg-sky-50 border-sky-200 text-sky-800'}`}>
                                 <span>{mcqAnswers[qi] !== null ? mcqQ.options[mcqAnswers[qi]!] : 'Not Answered'}</span>
-                                {isCorrect ? <span className="text-xs bg-teal-600 text-white px-2 py-0.5 rounded-full font-black">BEST 🎯</span> : <span className="text-lg">🌟</span>}
+                                {isCorrect ? <span className="text-xs bg-teal-600 text-white px-2 py-0.5 rounded-full font-black">BEST</span> : <span className="text-xs bg-teal-600 text-white px-2 py-0.5 rounded-full font-black">NICE TRY</span>}
                               </div>
                             </div>
                             {!isCorrect && (
@@ -953,14 +1019,14 @@ export default function WeeklyAssessmentPage() {
                                 <span className="font-extrabold text-gray-400 block mb-1">Best Choice:</span>
                                 <div className="p-3 rounded-2xl border-2 border-teal-200 bg-teal-50/60 text-teal-900 text-sm font-bold flex items-center justify-between">
                                   <span>{mcqQ.options[mcqQ.correct]}</span>
-                                  <span className="text-xs bg-teal-600 text-white px-2 py-0.5 rounded-full font-black">BEST 🎯</span>
+                                  <span className="text-xs bg-teal-600 text-white px-2 py-0.5 rounded-full font-black">BEST</span>
                                 </div>
                               </div>
                             )}
                           </div>
-                          <div className="p-3 rounded-2xl bg-teal-50 border border-teal-100 text-xs leading-relaxed font-medium flex gap-2 items-start">
+                          <div className="p-3.5 rounded-2xl bg-teal-50 border border-teal-100 text-sm md:text-base leading-relaxed font-semibold flex gap-3.5 items-start">
                             <img src={logo} alt="owl" className="w-7 h-7 object-contain flex-shrink-0 animate-bounce" style={{ animationDuration: '3s' }} />
-                            <div><span className="font-black text-teal-900 block mb-0.5">Yellow Owl's Secret:</span>{mcqQ.explanation}</div>
+                            <div><span className="font-black text-teal-900 block mb-0.5">Explanation:</span>{mcqQ.explanation}</div>
                           </div>
                         </div>
                       );
@@ -970,13 +1036,13 @@ export default function WeeklyAssessmentPage() {
                       if (!dq) return null;
                       return (
                         <div className="space-y-3">
-                          <div className="flex items-center gap-2"><span className="text-xl">✍️</span><span className="font-black text-gray-800 text-sm">Your Creative Masterpiece:</span></div>
+                          <div className="flex items-center gap-2"><span className="font-black text-gray-800 text-sm">Your Creative Masterpiece:</span></div>
                           <div className="bg-white border-2 border-amber-200 rounded-2xl p-4 shadow-sm relative overflow-hidden">
                             <div className="absolute top-0 bottom-0 left-3 w-[1px] bg-red-200/50" />
                             <p className="pl-5 text-gray-700 text-sm italic font-semibold leading-relaxed">"{currentAnswer.descriptive || 'No response provided'}"</p>
                           </div>
                           {dq.sampleAnswer && (
-                            <div className="p-3 rounded-2xl bg-sky-50 border-2 border-sky-100 text-xs leading-relaxed font-medium flex gap-2 items-start">
+                            <div className="p-3.5 rounded-2xl bg-sky-50 border-2 border-sky-100 text-sm md:text-base leading-relaxed font-semibold flex gap-3.5 items-start">
                               <span className="text-xl flex-shrink-0">💡</span>
                               <div><span className="font-black text-sky-900 block mb-0.5">Spark your imagination:</span>{dq.sampleAnswer}</div>
                             </div>
@@ -990,9 +1056,7 @@ export default function WeeklyAssessmentPage() {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between flex-wrap gap-2">
                             <div className="flex items-center gap-2"><span className="text-xl">🌀</span><span className="font-black text-purple-900 text-sm">Surprise Twist:</span></div>
-                            <span className={`font-black text-[10px] px-3 py-1 rounded-full border-2 ${twistCorrect ? 'bg-purple-50 border-purple-200 text-purple-700' : 'bg-indigo-50 border-indigo-200 text-indigo-700'}`}>
-                              {twistCorrect ? '✨ Best Choice!' : '🌟 Great Effort!'}
-                            </span>
+
                           </div>
                           <p className="font-black text-gray-800 text-sm leading-snug">{twistQuestion.question}</p>
                           <div className="space-y-2">
@@ -1000,7 +1064,7 @@ export default function WeeklyAssessmentPage() {
                               <span className="font-extrabold text-gray-400 block mb-1">Your Choice:</span>
                               <div className={`p-3 rounded-2xl border-2 flex items-center justify-between text-sm font-bold ${twistCorrect ? 'bg-purple-50 border-purple-200 text-purple-800' : 'bg-indigo-50 border-indigo-200 text-indigo-800'}`}>
                                 <span>{twistQuestion.options[twistAnswer]}</span>
-                                {twistCorrect ? <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-black">BEST 🎯</span> : <span className="text-lg">🌟</span>}
+                                {twistCorrect ? <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-black">BEST</span> : <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-black">NICE TRY</span>}
                               </div>
                             </div>
                             {!twistCorrect && (
@@ -1008,12 +1072,12 @@ export default function WeeklyAssessmentPage() {
                                 <span className="font-extrabold text-gray-400 block mb-1">Best Choice:</span>
                                 <div className="p-3 rounded-2xl border-2 border-purple-200 bg-purple-50/60 text-purple-900 text-sm font-bold flex items-center justify-between">
                                   <span>{twistQuestion.options[twistQuestion.correct]}</span>
-                                  <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-black">BEST 🎯</span>
+                                  <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-black">BEST</span>
                                 </div>
                               </div>
                             )}
                           </div>
-                          <div className="p-3 rounded-2xl bg-purple-50 border border-purple-200 text-xs leading-relaxed font-medium flex gap-2 items-start">
+                          <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-200 text-sm md:text-base leading-relaxed font-semibold flex gap-3.5 items-start">
                             <span className="text-xl flex-shrink-0 animate-pulse">🔮</span>
                             <div><span className="font-black text-purple-900 block mb-0.5">Twist Revealed:</span>{twistQuestion.explanation}</div>
                           </div>
@@ -1052,8 +1116,8 @@ export default function WeeklyAssessmentPage() {
                     key={i}
                     onClick={() => setFeedbackSlideIndex(i)}
                     className={`rounded-full transition-all cursor-pointer ${i === feedbackSlideIndex
-                        ? 'w-6 h-2.5 bg-[#FFEA11] border border-yellow-400'
-                        : 'w-2.5 h-2.5 bg-gray-200 hover:bg-gray-300'
+                      ? 'w-6 h-2.5 bg-[#FFEA11] border border-yellow-400'
+                      : 'w-2.5 h-2.5 bg-gray-200 hover:bg-gray-300'
                       }`}
                   />
                 ))}
@@ -1127,25 +1191,33 @@ export default function WeeklyAssessmentPage() {
                 Theme: {currentChallenge.theme}
               </p>
 
-              {/* Skill tags */}
-              {currentChallenge.skills && currentChallenge.skills.length > 0 && (
-                <div className="flex flex-wrap justify-center gap-2 mb-6">
-                  {currentChallenge.skills.map(skKey => {
-                    const info = (SUPER_SKILL_DESCRIPTIONS as any)[skKey];
-                    if (!info) return null;
-                    return (
-                      <span
-                        key={skKey}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black text-gray-700 shadow-sm border border-gray-200/50 hover:scale-105 transition-transform cursor-default"
-                        style={{ backgroundColor: `${info.color}35` }}
-                      >
-                        <span>{info.emoji}</span>
-                        <span>{info.label}</span>
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
+              {/* Focus tags */}
+              {(() => {
+                const focusList = isSenior
+                  ? currentChallenge.focus?.senior
+                  : currentChallenge.focus?.junior;
+
+                if (!focusList || focusList.length === 0) return null;
+
+                return (
+                  <div className="mb-6">
+                    <span className="text-[11px] font-black text-[#B8A800] bg-[#fffbeb] px-3 py-1 rounded-full uppercase tracking-wider block w-max mx-auto mb-3">
+                      Focus Areas
+                    </span>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {focusList.map((fValue) => (
+                        <span
+                          key={fValue}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black text-gray-700 shadow-sm border border-gray-200/50 hover:scale-105 transition-transform cursor-default bg-teal-50 border-teal-150"
+                        >
+                          <span>🎯</span>
+                          <span className="capitalize">{fValue}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="bg-gray-50 rounded-2xl p-5 mb-8 text-left border border-gray-100">
                 <h4 className="font-extrabold text-sm text-gray-700 mb-2">What you'll do:</h4>
@@ -1171,7 +1243,7 @@ export default function WeeklyAssessmentPage() {
                   onClick={handleBackToDen}
                   style={{ background: 'none', border: 'none', cursor: 'pointer' }}
                 >
-                  ← Back to Den
+                  ← Back to Dashboard
                 </button>
               </div>
             </div>
@@ -1219,12 +1291,12 @@ export default function WeeklyAssessmentPage() {
                         disabled={isLocked}
                         onClick={() => handleQuestionClick(idx)}
                         className={`w-12 h-12 flex items-center justify-center rounded-2xl text-base font-black transition-all cursor-pointer ${isActive
-                            ? 'bg-[#FFEA11] text-gray-800 shadow-md cursor-default border border-transparent'
-                            : isLocked
-                              ? 'bg-gray-50 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50'
-                              : isAnswered
-                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-250 shadow-sm hover:bg-emerald-100 hover:border-emerald-300'
-                                : 'bg-white text-gray-700 border border-gray-200 hover:bg-[#FFEA11]/25 hover:text-gray-800 shadow-sm'
+                          ? 'bg-[#FFEA11] text-gray-800 shadow-md cursor-default border border-transparent'
+                          : isLocked
+                            ? 'bg-gray-50 text-gray-400 border border-gray-200 cursor-not-allowed opacity-50'
+                            : isAnswered
+                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-250 shadow-sm hover:bg-emerald-100 hover:border-emerald-300'
+                              : 'bg-white text-gray-700 border border-gray-200 hover:bg-[#FFEA11]/25 hover:text-gray-800 shadow-sm'
                           }`}
                       >
                         {isLocked ? '🔒' : isAnswered && !isActive ? '✓' : idx + 1}
@@ -1243,7 +1315,7 @@ export default function WeeklyAssessmentPage() {
                   onClick={handleBackToDen}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-gray-500 hover:bg-gray-100 transition-all cursor-pointer text-left"
                 >
-                  ← Back to Den
+                  ← Back to Dashboard
                 </button>
               </div>
             </aside>
@@ -1278,12 +1350,12 @@ export default function WeeklyAssessmentPage() {
                       disabled={isLocked}
                       onClick={() => handleQuestionClick(idx)}
                       className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${isActive
-                          ? 'bg-[#FFEA11] text-gray-800 shadow-sm'
-                          : isLocked
-                            ? 'bg-gray-100 text-gray-400 opacity-60'
-                            : isAnswered
-                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-250'
-                              : 'bg-white/80 text-gray-655 hover:bg-gray-100'
+                        ? 'bg-[#FFEA11] text-gray-800 shadow-sm'
+                        : isLocked
+                          ? 'bg-gray-100 text-gray-400 opacity-60'
+                          : isAnswered
+                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-250'
+                            : 'bg-white/80 text-gray-655 hover:bg-gray-100'
                         }`}
                     >
                       {isAnswered && !isActive ? '✓ ' : ''}{getQuestionLabel(q, idx)}
@@ -1294,66 +1366,83 @@ export default function WeeklyAssessmentPage() {
 
               {/* Main Content Area containing Card */}
               <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
-                <div ref={cardRef} className="owl-card max-w-2xl w-full p-6 sm:p-8">
-                  {/* Challenge Header context */}
-                  <div
-                    className="flex items-center gap-3 mb-6 p-3.5 rounded-2xl"
-                    style={{ background: `${currentChallenge.color}20` }}
-                  >
-                    <span className="text-3xl">{currentChallenge.emoji}</span>
-                    <div>
-                      <div className="font-bold text-gray-800 text-base">{currentChallenge.title}</div>
-                      <div className="text-xs text-gray-500">{currentChallenge.theme}</div>
-                    </div>
-                    <div className="ml-auto text-xs text-teal-650 font-black px-2.5 py-1 rounded-full bg-teal-50 border border-teal-100">
-                      {getQuestionLabel(challengeQuestions[activeQuestionIndex], activeQuestionIndex)}
-                    </div>
-                  </div>
-
-                  {/* Active Question Content */}
-                  <div className="min-h-[220px] flex flex-col justify-center">
-                    {renderActiveQuestion()}
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex items-center gap-3 mt-8 pt-4 border-t border-gray-100">
-                    {/* Back button */}
-                    {activeQuestionIndex > 0 ? (
-                      <button
-                        onClick={() => handleQuestionClick(activeQuestionIndex - 1)}
-                        className="text-sm text-gray-600 hover:text-gray-800 font-black transition-colors px-4 py-2 hover:bg-gray-100 rounded-xl cursor-pointer"
-                      >
-                        ← Back
-                      </button>
-                    ) : currentChallengeIndex > 0 ? (
-                      <button
-                        onClick={goToPrevChallenge}
-                        className="text-sm text-gray-600 hover:text-gray-800 font-black transition-colors px-4 py-2 hover:bg-gray-100 rounded-xl cursor-pointer"
-                      >
-                        ← Previous Challenge
-                      </button>
-                    ) : null}
-
-                    <div className="flex-1" />
-
-                    {/* Next / Action button */}
-                    {activeQuestionIndex < challengeQuestions.length - 1 ? (
-                      activeQuestionIndex === challengeQuestions.length - 2 && currentChallenge.twistQuestion && !showTwist ? (
-                        <div className="flex flex-col items-end gap-1.5">
-                          <button
-                            className="btn-yellow-owl text-base py-3 px-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={!isLockEnabled()}
-                            onClick={handleLockAndContinue}
-                          >
-                            Lock & Reveal Twist 🌀
-                          </button>
-                          {!isLockEnabled() && (
-                            <span className="text-[10px] font-bold text-red-500 animate-pulse">
-                              Answer all questions to unlock twist!
-                            </span>
-                          )}
-                        </div>
+                <div
+                  ref={cardRef}
+                  className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
+                >
+                  {/* Left Column: Scenario Card Box */}
+                  <div className="lg:col-span-5 bg-white rounded-3xl shadow-md p-6 sm:p-8 border border-slate-100 flex flex-col justify-start relative overflow-hidden">
+                    <span className="font-black block text-teal-500 mb-4 text-xs uppercase tracking-widest">
+                      Scenario Background
+                    </span>
+                    <div
+                      className="w-full h-40 rounded-2xl mb-6 flex flex-col items-center justify-center text-6xl select-none overflow-hidden"
+                      style={{
+                        background: `linear-gradient(135deg, ${currentChallenge.color}15 0%, ${currentChallenge.color}35 100%)`,
+                        border: `2.5px dashed ${currentChallenge.color}45`,
+                      }}
+                    >
+                      {currentChallenge.id === 1 ? (
+                        <img src={challenge1Img} alt="Challenge 1" className="w-full h-full object-cover" />
+                      ) : currentChallenge.id === 2 ? (
+                        <img src={challenge2Img} alt="Challenge 2" className="w-full h-full object-cover" />
                       ) : (
+                        <span>{currentChallenge.emoji}</span>
+                      )}
+                    </div>
+                    <h3 className="text-xl font-black text-gray-800 mb-2">
+                      {currentChallenge.title}
+                    </h3>
+                    <p className="leading-relaxed font-bold text-slate-700 text-base md:text-lg">
+                      {currentChallenge.scenario}
+                    </p>
+                  </div>
+
+                  {/* Right Column: Question Card Box */}
+                  <div ref={rightBoxRef} className="lg:col-span-7 owl-card w-full p-6 sm:p-8 flex flex-col justify-between">
+                    {/* Challenge Header context */}
+                    <div
+                      className="flex items-center gap-3 mb-6 p-3.5 rounded-2xl"
+                      style={{ background: `${currentChallenge.color}20` }}
+                    >
+                      <span className="text-3xl">{currentChallenge.emoji}</span>
+                      <div>
+                        <div className="font-bold text-gray-800 text-base">{currentChallenge.title}</div>
+                        <div className="text-xs text-gray-500">{currentChallenge.theme}</div>
+                      </div>
+                      <div className="ml-auto text-xs text-teal-650 font-black px-2.5 py-1 rounded-full bg-teal-50 border border-teal-100">
+                        {getQuestionLabel(challengeQuestions[activeQuestionIndex], activeQuestionIndex)}
+                      </div>
+                    </div>
+
+                    {/* Active Question Content */}
+                    <div className="min-h-[220px] flex flex-col justify-center">
+                      {renderActiveQuestion()}
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-3 mt-8 pt-4 border-t border-gray-100">
+                      {/* Back button */}
+                      {activeQuestionIndex > 0 ? (
+                        <button
+                          onClick={() => handleQuestionClick(activeQuestionIndex - 1)}
+                          className="text-sm text-gray-600 hover:text-gray-800 font-black transition-colors px-4 py-2 hover:bg-gray-100 rounded-xl cursor-pointer"
+                        >
+                          ← Back
+                        </button>
+                      ) : currentChallengeIndex > 0 ? (
+                        <button
+                          onClick={goToPrevChallenge}
+                          className="text-sm text-gray-600 hover:text-gray-800 font-black transition-colors px-4 py-2 hover:bg-gray-100 rounded-xl cursor-pointer"
+                        >
+                          ← Previous Challenge
+                        </button>
+                      ) : null}
+
+                      <div className="flex-1" />
+
+                      {/* Next / Action button */}
+                      {activeQuestionIndex < challengeQuestions.length - 1 ? (
                         <button
                           className="btn-yellow-owl text-base py-3 px-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           disabled={!isQuestionAnswered(challengeQuestions[activeQuestionIndex])}
@@ -1361,26 +1450,33 @@ export default function WeeklyAssessmentPage() {
                         >
                           Next Question ➔
                         </button>
-                      )
-                    ) : (
-                      currentChallenge.twistQuestion ? (
-                        <button
-                          className="btn-yellow-owl text-base py-3 px-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                          disabled={!showContinueAfterTwist}
-                          onClick={openFeedbackPage}
-                        >
-                          See Challenge Feedback ➔
-                        </button>
                       ) : (
-                        <button
-                          className="btn-yellow-owl text-base py-3 px-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                          disabled={!isQuestionAnswered(challengeQuestions[activeQuestionIndex])}
-                          onClick={openFeedbackPage}
-                        >
-                          See Challenge Feedback ➔
-                        </button>
-                      )
-                    )}
+                        // We are on the last question of challengeQuestions.
+                        // If it's a twist challenge, but showTwist is false:
+                        currentChallenge.twistQuestion && !showTwist ? (
+                          <button
+                            className="btn-yellow-owl text-base py-3 px-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={!isQuestionAnswered(challengeQuestions[activeQuestionIndex])}
+                            onClick={triggerSurpriseTwist}
+                          >
+                            Complete Challenge ➔
+                          </button>
+                        ) : (
+                          // We are on the actual last question (either Twist question, or the final question of a non-twist challenge).
+                          <button
+                            className="btn-yellow-owl text-base py-3 px-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={
+                              currentChallenge.twistQuestion
+                                ? !showContinueAfterTwist
+                                : !isQuestionAnswered(challengeQuestions[activeQuestionIndex])
+                            }
+                            onClick={openFeedbackPage}
+                          >
+                            See Challenge Feedback ➔
+                          </button>
+                        )
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1408,6 +1504,37 @@ export default function WeeklyAssessmentPage() {
               onClick={handleImHere}
             >
               Yes, I'm here! 🙋
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Surprise Twist Overlay ── */}
+      {showSurprise && (
+        <div
+          ref={surpriseOverlayRef}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-md p-4"
+        >
+          <div
+            ref={surpriseCardRef}
+            className="text-center p-8 sm:p-10 rounded-3xl max-w-md w-full bg-gradient-to-br from-violet-600 via-purple-600 to-pink-500 text-white shadow-2xl border border-white/20 relative overflow-hidden"
+          >
+            {/* Background glowing circles */}
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-yellow-400/20 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-pink-400/20 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="text-7xl mb-6 animate-bounce inline-block">🌀</div>
+            <h2 className="text-3xl sm:text-4xl font-black mb-4 tracking-tight uppercase">
+              Surprise Twist!
+            </h2>
+            <p className="text-base sm:text-lg font-bold text-purple-100 mb-8 leading-relaxed">
+              Wait a minute! We have a surprise twist for you?
+            </p>
+            <button
+              onClick={handleRevealTwist}
+              className="w-full py-4 bg-[#FFEA11] text-gray-900 text-lg font-black rounded-2xl shadow-lg hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer border-none"
+            >
+              Reveal the Twist ➔
             </button>
           </div>
         </div>

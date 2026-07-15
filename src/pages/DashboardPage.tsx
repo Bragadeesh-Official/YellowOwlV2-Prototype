@@ -28,9 +28,31 @@ export default function DashboardPage() {
 
   const [tourStep, setTourStep] = useState(0);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [isDevelopmentMode, setIsDevelopmentMode] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0, arrowLeft: 0, arrowDirection: 'up' });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [noWeeklyChallenge, setNoWeeklyChallenge] = useState(false);
+
+  // Hook up popstate navigation when in development mode to prompt confirm logout
+  useEffect(() => {
+    if (!isDevelopmentMode) return;
+
+    // Push state to history to enable catching back button clicks
+    window.history.pushState(null, '', window.location.href);
+
+    const handlePopState = () => {
+      // Prevent actual back navigation by pushing the state back immediately
+      window.history.pushState(null, '', window.location.href);
+      // Open our custom confirmation modal
+      setShowLogoutConfirm(true);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isDevelopmentMode]);
 
 
   // Defensive profile lookups to prevent crashes
@@ -265,6 +287,84 @@ export default function DashboardPage() {
     }
     return "Your owl is so proud of you! Let's do today's challenge to earn more shiny stars! 🦉⭐";
   };
+
+  if (isDevelopmentMode) {
+    return (
+      <div className="relative h-screen w-screen overflow-hidden flex flex-col items-center justify-center p-6" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fffbeb 100%)' }}>
+        {/* Floating Background Bubbles */}
+        {BUBBLES.map((b, i) => (
+          <div
+            key={i}
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              width: b.size,
+              height: b.size,
+              backgroundColor: b.bg,
+              opacity: 0.2,
+              top: b.top,
+              left: b.left,
+              zIndex: 0,
+            }}
+          />
+        ))}
+
+        {/* Development Box Card */}
+        <div className="relative z-10 bg-white/90 backdrop-blur-md border-4 border-[#FFEA11]/30 rounded-[40px] p-12 sm:p-16 shadow-2xl max-w-2xl w-full text-center flex flex-col items-center border-b-8 border-yellow-400/80 animate-pop-in">
+          {/* Logo */}
+          <div className="bg-[#FFEA11]/20 p-6 rounded-[32px] border-2 border-[#FFEA11]/40 mb-10">
+            <img src={logo} alt="Yellow Owl Logo" className="h-36 w-auto object-contain" />
+          </div>
+
+          {/* Text */}
+          <h1 className="text-3xl sm:text-4xl font-black text-gray-800 leading-normal mb-12 font-display">
+            Your dashboard is prepared by Yellow owl team.
+          </h1>
+
+          {/* Logout Option */}
+          <button
+            onClick={() => setShowLogoutConfirm(true)}
+            className="w-full sm:w-80 text-center text-base font-black bg-red-50 hover:bg-red-100 text-red-650 py-4 px-8 rounded-2xl border-2 border-red-200/50 transition-all cursor-pointer active:scale-95 shadow-md"
+          >
+            Log Out
+          </button>
+        </div>
+
+        {/* Logout Confirmation Dialog Modal */}
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in animate-duration-200 animate-fill-both">
+            <div className="bg-white rounded-[32px] border-4 border-[#FFEA11]/40 p-8 sm:p-10 shadow-2xl max-w-sm w-full text-center flex flex-col items-center border-b-8 border-yellow-400 animate-pop-in">
+              <div className="bg-red-50 p-4 rounded-2xl border-2 border-red-100 mb-6 text-3xl">
+                ⚠️
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black text-gray-800 mb-3">
+                Confirm Log Out
+              </h3>
+              <p className="text-sm font-semibold text-gray-500 mb-8 leading-relaxed">
+                Are you sure you want to log out from the dashboard?
+              </p>
+              <div className="flex flex-col gap-2 w-full">
+                <button
+                  onClick={() => {
+                    logout();
+                    window.location.href = '/login';
+                  }}
+                  className="w-full text-center text-sm font-black bg-red-50 hover:bg-red-100 text-red-650 py-3.5 px-6 rounded-2xl border-2 border-red-200/50 transition-all cursor-pointer active:scale-95 shadow-sm"
+                >
+                  Yes, Log Out
+                </button>
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="w-full text-center text-sm font-black bg-slate-50 hover:bg-slate-100 text-gray-650 py-3.5 px-6 rounded-2xl border-2 border-slate-200 transition-all cursor-pointer active:scale-95 shadow-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-screen overflow-hidden flex" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fffbeb 100%)' }}>
@@ -741,6 +841,13 @@ export default function DashboardPage() {
                   }`}
               >
                 {noWeeklyChallenge ? '📅 Show Weekly Challenge' : '📅 No Weekly Challenge'}
+              </button>
+
+              <button
+                onClick={() => setIsDevelopmentMode(true)}
+                className="w-full text-left text-xs font-black bg-amber-50 hover:bg-amber-100 text-amber-800 px-3.5 py-2.5 rounded-2xl border border-amber-250/50 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                🛠️ On-Development
               </button>
             </div>
           </div>

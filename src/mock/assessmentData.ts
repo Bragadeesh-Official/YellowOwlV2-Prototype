@@ -35,9 +35,13 @@ export interface Challenge {
   theme: string;
   emoji: string;
   color: string;
+  scenario: string;
   questions: (MCQQuestion | DescriptiveQuestion | TwistQuestion | IdeasQuestion)[];
   twistQuestion?: TwistQuestion;
-  skills: string[];
+  focus: {
+    junior: string[];
+    senior: string[];
+  };
 }
 
 export const WEEKLY_ASSESSMENT: Challenge[] = [
@@ -47,7 +51,11 @@ export const WEEKLY_ASSESSMENT: Challenge[] = [
     theme: 'The Amazing World of Plants',
     emoji: '🌿',
     color: '#2AD5B4',
-    skills: ['thinking', 'reading'],
+    scenario: 'A local park is losing its green trees, and the city wants to find out why. You are hired as a Nature Detective to study how plants grow, breathe, and survive in busy urban areas!',
+    focus: {
+      junior: ['finding information', 'analysing options'],
+      senior: ['causation', 'logical reasoning']
+    },
     questions: [
       {
         type: 'mcq',
@@ -66,13 +74,13 @@ export const WEEKLY_ASSESSMENT: Challenge[] = [
       {
         type: 'descriptive',
         question: 'If you were a tree in a busy city, how would you feel and what would you do? 🌳',
-        hint: 'Think about the pollution, the people, and what a tree does for the city...',
+        hint: '',
         sampleAnswer: 'I would feel strong but sometimes choked by smoke. I would grow my branches wide to give shade and clean the air for everyone around me!',
       },
     ],
     twistQuestion: {
       type: 'twist',
-      question: '🌀 TWIST! A plant is kept in a dark room for a week. What will most likely happen?',
+      question: 'sA plant is kept in a dark room for a week. What will most likely happen?',
       options: [
         'It will grow faster without sunlight distracting it',
         'Nothing will change',
@@ -89,7 +97,11 @@ export const WEEKLY_ASSESSMENT: Challenge[] = [
     theme: 'Tales from Around the World',
     emoji: '📚',
     color: '#FFEA11',
-    skills: ['reading', 'listening'],
+    scenario: 'The school library has a secret door that only opens when you solve story puzzles. As a Story Explorer, you must decode the elements of famous tales to unlock the portal to new realms!',
+    focus: {
+      junior: ['finding information', 'evaluating options'],
+      senior: ['evaluating options', 'recognising patterns']
+    },
     questions: [
       {
         type: 'mcq',
@@ -107,14 +119,14 @@ export const WEEKLY_ASSESSMENT: Challenge[] = [
       },
       {
         type: 'descriptive',
-        question: 'Create your own story opening! Start with "One rainy afternoon, something strange appeared at the door..." ✍️',
+        question: 'Create your own story opening! Start with "One rainy afternoon, something strange appeared at the door..." ',
         hint: 'Who is at home? What is at the door? What happens next?',
         sampleAnswer: 'One rainy afternoon, something strange appeared at the door — a tiny glowing box with no label. Inside was a map leading to the school library at midnight!',
       },
     ],
     twistQuestion: {
       type: 'twist',
-      question: '🌀 TWIST! If you could rewrite the ending of any famous story, which SKILL would be most useful?',
+      question: 'If you could rewrite the ending of any famous story, which SKILL would be most useful?',
       options: [
         'Being the fastest runner',
         'Understanding how the villain thinks',
@@ -131,7 +143,11 @@ export const WEEKLY_ASSESSMENT: Challenge[] = [
     theme: 'Making the World Better',
     emoji: '💡',
     color: '#A78BFA',
-    skills: ['thinking', 'imagination'],
+    scenario: 'Your principal has announced a grand challenge: design the school of the future! You have been granted a magic wand to brainstorm, analyse, and propose 5 massive upgrades to make school amazing.',
+    focus: {
+      junior: ['creating options', 'analysing options'],
+      senior: ['evaluating options', 'logical reasoning']
+    },
     questions: [
       {
         type: 'ideas',
@@ -148,7 +164,11 @@ export const WEEKLY_ASSESSMENT: Challenge[] = [
     theme: 'Inventions We Need',
     emoji: '🚀',
     color: '#F97316',
-    skills: ['imagination'],
+    scenario: 'The year is 2050. Humanity faces new challenges like communicating with animals and traveling across planets. As a futuristic inventor, you need to brainstorm and design inventions to help make life better.',
+    focus: {
+      junior: ['creating options'],
+      senior: ['evaluating options']
+    },
     questions: [
       {
         type: 'ideas',
@@ -165,7 +185,11 @@ export const WEEKLY_ASSESSMENT: Challenge[] = [
     theme: 'Thinking About Thinking',
     emoji: '🪞',
     color: '#EC4899',
-    skills: ['thinking', 'imagination'],
+    scenario: 'You have successfully journeyed through science, literature, school design, and future inventions! Now it is time to look back in the magic mirror, reflect on your thinking journey, and set your goals for the future.',
+    focus: {
+      junior: ['evaluating options', 'creating options'],
+      senior: ['logical reasoning', 'recognising patterns']
+    },
     questions: [
       {
         type: 'ideas',

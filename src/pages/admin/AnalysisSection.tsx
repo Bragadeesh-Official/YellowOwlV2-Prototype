@@ -1,0 +1,228 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
+import { type AdminUser, type School } from '@/mock/adminData';
+import { JUNIOR_WARMUP, SENIOR_WARMUP } from '@/mock/userData';
+
+import { FileDown } from 'lucide-react';
+
+
+interface AnalysisSectionProps {
+  users: AdminUser[];
+  schools: School[];
+  mode: 'assessments' | 'skills';
+}
+
+const GRADES = Array.from({ length: 5 }, (_, i) => `Grade ${i + 3}`);
+
+export default function AnalysisSection({ users, schools, mode }: AnalysisSectionProps) {
+  const navigate = useNavigate();
+  const [selectedSchoolId, setSelectedSchoolId] = useState('');
+  const [selectedGrade, setSelectedGrade] = useState('');
+
+  // Filter users matching School and Grade
+  const filteredUsers = users.filter(
+    u => u.usageMode === 'school' && u.schoolId === selectedSchoolId && u.grade === selectedGrade
+  );
+
+  // Compute skill level badge for a user (used in skills mode table)
+  const getSkillBadge = (userId: string) => {
+    const charSum = userId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const getLvl = (sId: string, w = 3) => {
+      if (sId === 'digging-in')     return 1 + ((charSum + w * 3) % 4);
+      if (sId === 'my-ideas')       return 1 + ((charSum + w * 5) % 4);
+      if (sId === 'looking-closer') return 1 + ((charSum + w * 7) % 4);
+      return 1 + ((charSum + w * 11) % 4);
+    };
+    const avg = (getLvl('digging-in') + getLvl('my-ideas') + getLvl('looking-closer') + getLvl('best-choice')) / 4;
+    if (avg >= 3.5) return { label: 'Fluent',    cls: 'bg-purple-50 text-purple-700 border-purple-100', avg };
+    if (avg >= 2.5) return { label: 'Strong',    cls: 'bg-teal-50 text-teal-700 border-teal-100',       avg };
+    if (avg >= 1.5) return { label: 'Growing',   cls: 'bg-blue-50 text-blue-700 border-blue-100',       avg };
+    return             { label: 'Beginning', cls: 'bg-orange-50 text-orange-700 border-orange-100',    avg };
+  };
+
+  // Excel Download
+  const handleDownloadExcel = () => {
+    if (!selectedSchoolId || !selectedGrade) return;
+    const school = schools.find(s => s.id === selectedSchoolId);
+    const schoolName = school ? `${school.name}_${school.branch}` : 'School';
+    if (filteredUsers.length === 0) { alert('No students found.'); return; }
+
+    const getMockAnswerIndex = (userId: string, qIdx: number, numOptions: number) => {
+      if (!userId) return 0;
+      return userId.charCodeAt(qIdx % userId.length) % numOptions;
+    };
+
+    const rows = filteredUsers.map(user => {
+      const rowData: Record<string, string | number> = {
+        'Student Name': user.childName,
+        'Roll No': user.rollNo || '—',
+        'Mobile': `${user.countryCode || '+91'} ${user.parentContact}`,
+        'Email': user.parentEmail || '—',
+      };
+
+      const wData = user.age >= 12 ? SENIOR_WARMUP : JUNIOR_WARMUP;
+      wData.questions.forEach((q, i) => {
+        const opt = q.options[getMockAnswerIndex(user.id, i, q.options.length)];
+        rowData[`Q${i + 1} Answer`] = opt.text;
+        rowData[`Q${i + 1} Score`]  = opt.score;
+      });
+
+      return rowData;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Assessment Report');
+    const maxLens = Object.keys(rows[0] || {}).map(k => {
+      let max = k.length;
+      rows.forEach(r => { const v = String(r[k] ?? ''); if (v.length > max) max = v.length; });
+      return { wch: Math.min(max + 2, 45) };
+    });
+    ws['!cols'] = maxLens;
+    XLSX.writeFile(wb, `${schoolName}_${selectedGrade.replace(/\s+/g, '_')}_Assessment_Report.xlsx`);
+  };
+
+  return (
+    <div style={{ padding: 28 }}>
+      {/* Page Heading */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#1e293b', margin: 0 }}>
+          {mode === 'skills' ? 'User Skill Analysis' : 'User Assessment Analysis'}
+        </h1>
+        <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
+          {mode === 'skills'
+            ? 'Track skill-based progress visualization and individual student core capabilities'
+            : 'View diagnostics and warm-up assessment results per student'}
+        </p>
+      </div>
+
+      {/* Filters */}
+      <div style={{ background: 'white', borderRadius: 16, padding: 20, border: '1px solid #E2E8F0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', marginBottom: 24 }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Select Tenant/School</label>
+            <select
+              value={selectedSchoolId}
+              onChange={e => { setSelectedSchoolId(e.target.value); }}
+              className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none bg-white focus:border-teal-owl transition-all"
+            >
+              <option value="">Choose a School...</option>
+              {schools.map(s => <option key={s.id} value={s.id}>{s.name} ({s.branch})</option>)}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Select Grade</label>
+            <select
+              value={selectedGrade}
+              onChange={e => { setSelectedGrade(e.target.value); }}
+              className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none bg-white focus:border-teal-owl transition-all"
+            >
+              <option value="">Choose a Grade...</option>
+              {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {selectedSchoolId && selectedGrade ? (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+          {/* Class List Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 border-b border-slate-100">
+            <div>
+              <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">
+                Class Enrollment ({filteredUsers.length} Students)
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Click <strong>"{mode === 'assessments' ? 'View Assessments' : 'View Skill'}"</strong> to open the student's detailed report.
+              </p>
+            </div>
+
+            {mode === 'assessments' && (
+              <button
+                onClick={handleDownloadExcel}
+                disabled={filteredUsers.length === 0}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+              >
+                <FileDown size={14} /> Download Grade Report (Excel)
+              </button>
+            )}
+          </div>
+
+          {/* Student Table */}
+          {filteredUsers.length === 0 ? (
+            <div className="py-12 text-center text-gray-400 text-xs">
+              No students enrolled in this Grade for the selected Tenant.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b-2 border-slate-100 text-slate-500">
+                    <th className="py-3 px-4 font-black text-slate-600">#</th>
+                    <th className="py-3 px-4 font-black text-slate-600">Student Name</th>
+                    <th className="py-3 px-4 font-black text-slate-600">Roll No</th>
+                    <th className="py-3 px-4 font-black text-slate-600">Age</th>
+                    <th className="py-3 px-4 font-black text-slate-600">Parent Contact</th>
+                    {mode === 'skills' && <th className="py-3 px-4 font-black text-slate-600">Latest Level</th>}
+                    <th className="py-3 px-4 font-black text-slate-600 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user, idx) => {
+                    const badge = mode === 'skills' ? getSkillBadge(user.id) : null;
+                    const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+
+                    return (
+                      <tr key={user.id} className={`border-b border-slate-100 hover:bg-teal-50/20 transition-colors ${rowBg}`}>
+                        <td className="py-3.5 px-4 text-slate-400 font-semibold">{idx + 1}</td>
+                        <td className="py-3.5 px-4 text-slate-800 font-bold">{user.childName}</td>
+                        <td className="py-3.5 px-4 font-mono text-slate-600 font-bold">{user.rollNo || '—'}</td>
+                        <td className="py-3.5 px-4 text-slate-700 font-semibold">{user.age} yrs</td>
+                        <td className="py-3.5 px-4 text-slate-500 font-semibold">{user.countryCode || '+91'} {user.parentContact}</td>
+
+                        {mode === 'skills' && badge && (
+                          <td className="py-3.5 px-4">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${badge.cls}`}>
+                              {badge.label} <span className="opacity-60">({badge.avg.toFixed(1)})</span>
+                            </span>
+                          </td>
+                        )}
+
+                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                          {mode === 'assessments' ? (
+                            <button
+                              onClick={() => navigate(`/admin/student/${user.id}/assessment`)}
+                              className="px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all bg-slate-100 text-teal-700 hover:bg-teal-600 hover:text-white"
+                            >
+                              View Assessments
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => navigate(`/admin/student/${user.id}/skill`)}
+                              className="px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all bg-slate-100 text-purple-700 hover:bg-purple-600 hover:text-white"
+                            >
+                              View Skill
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center">
+          <h3 className="text-sm font-black text-gray-700">Select Tenant &amp; Grade</h3>
+          <p className="text-xs text-gray-400 mt-1 max-w-xs mx-auto">
+            Choose a School/Tenant and Grade above to load the student list.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}

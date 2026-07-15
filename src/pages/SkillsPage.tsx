@@ -24,6 +24,44 @@ export default function SkillsPage() {
   const bubblesRef = useRef<HTMLDivElement[]>([]);
 
   const skillsRef = useRef<HTMLDivElement>(null);
+  const [weeksCount, setWeeksCount] = useState<number>(() => {
+    const saved = localStorage.getItem('weeksCount');
+    return saved ? Number(saved) : 3;
+  });
+
+  // Keep state sync
+  useEffect(() => {
+    const checkValue = () => {
+      const saved = localStorage.getItem('weeksCount');
+      if (saved) setWeeksCount(Number(saved));
+    };
+    window.addEventListener('storage', checkValue);
+    return () => window.removeEventListener('storage', checkValue);
+  }, []);
+
+  const handleWeeksChange = (val: number) => {
+    setWeeksCount(val);
+    localStorage.setItem('weeksCount', String(val));
+    window.dispatchEvent(new Event('storage'));
+  };
+
+  // Helper to generate history for any number of weeks
+  /*
+  const generateSkillHistory = (baseHistory: number[], count: number) => {
+    const result: number[] = [];
+    const startVal = baseHistory[0];
+    const endVal = baseHistory[baseHistory.length - 1];
+
+    for (let i = 0; i < count; i++) {
+      const t = count > 1 ? i / (count - 1) : 1;
+      const interp = startVal + t * (endVal - startVal);
+      const noise = Math.sin(i * 1.5) * 0.4;
+      const val = Math.max(1, Math.min(4, Math.round(interp + noise)));
+      result.push(val);
+    }
+    return result;
+  };
+  */
 
   // Redirect if not logged in
   useEffect(() => {
@@ -181,7 +219,29 @@ export default function SkillsPage() {
         </div>
 
         {/* Bottom Actions */}
-        <div className="space-y-2 pt-4 border-t border-gray-100">
+        <div className="space-y-4 pt-4 border-t border-gray-100">
+          {/* Week Progress Setting */}
+          <div className="px-2">
+            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
+              📅 History Period
+            </label>
+            <div className="relative">
+              <select
+                value={weeksCount}
+                onChange={(e) => handleWeeksChange(Number(e.target.value))}
+                className="w-full bg-gray-50 border border-gray-200 text-gray-700 font-bold text-xs rounded-xl px-3 py-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#FFEA11] appearance-none"
+              >
+                <option value={3}>Last 3 Weeks</option>
+                <option value={15}>Last 15 Weeks</option>
+                <option value={30}>Last 30 Weeks</option>
+                <option value={50}>Last 50 Weeks</option>
+              </select>
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
+                ▾
+              </div>
+            </div>
+          </div>
+
           <button
             onClick={() => navigate('/dashboard')}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-teal-650 hover:bg-teal-50 transition-all cursor-pointer text-left"
@@ -263,7 +323,7 @@ export default function SkillsPage() {
                     setMobileMenuOpen(false);
                     navigate('/profile');
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-650 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all"
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-left text-gray-655 hover:bg-[#FFEA11]/25 hover:text-gray-800 transition-all"
                 >
                   My Profile
                 </button>
@@ -281,13 +341,35 @@ export default function SkillsPage() {
             </div>
 
             {/* Bottom Actions */}
-            <div className="space-y-2 pt-4 border-t border-gray-100">
+            <div className="space-y-4 pt-4 border-t border-gray-100">
+              {/* Week Progress Setting */}
+              <div>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
+                  📅 History Period
+                </label>
+                <div className="relative">
+                  <select
+                    value={weeksCount}
+                    onChange={(e) => handleWeeksChange(Number(e.target.value))}
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-700 font-bold text-xs rounded-xl px-3 py-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#FFEA11] appearance-none"
+                  >
+                    <option value={3}>Last 3 Weeks</option>
+                    <option value={15}>Last 15 Weeks</option>
+                    <option value={30}>Last 30 Weeks</option>
+                    <option value={50}>Last 50 Weeks</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400">
+                    ▾
+                  </div>
+                </div>
+              </div>
+
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
                   navigate('/dashboard');
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-teal-650 hover:bg-teal-50 text-left"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black text-teal-655 hover:bg-teal-50 text-left"
               >
                 <span>Guide Tour</span>
               </button>
@@ -339,24 +421,28 @@ export default function SkillsPage() {
         <div ref={skillsRef} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[
             {
+              id: "digging-in",
               title: "Digging in",
               description: "Can spot what's relevant from what isn't",
               color: "#8B5CF6",
               history: [1, 2, 3],
             },
             {
+              id: "my-ideas",
               title: "My ideas",
               description: "Can come up with a few ideas",
               color: "#0D9488",
               history: [2, 2, 4],
             },
             {
+              id: "looking-closer",
               title: "Looking closer",
               description: "Can describe pros and cons of an option",
               color: "#1E3A8A",
               history: [1, 3, 3],
             },
             {
+              id: "best-choice",
               title: "Best choice",
               description: "Can give a reason for a choice",
               color: "#F97316",
@@ -370,15 +456,33 @@ export default function SkillsPage() {
               return 110;
             };
 
+            const getX = (i: number) => {
+              const startX = 65;
+              const endX = 275;
+              return startX + (i / 2) * (endX - startX);
+            };
+
+            const history = skill.history;
+            const pathD = history.map((val, idx) => `${idx === 0 ? 'M' : 'L'} ${getX(idx)} ${getY(val)}`).join(' ');
+
             return (
               <div
                 key={index}
                 className="owl-card p-6 bg-white border border-yellow-150/40 rounded-3xl shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex items-center gap-2.5 mb-1.5">
-                    <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: skill.color }} />
-                    <h3 className="text-lg font-black text-gray-800">{skill.title}</h3>
+                  <div className="flex items-center justify-between gap-4 mb-1.5">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: skill.color }} />
+                      <h3 className="text-lg font-black text-gray-800">{skill.title}</h3>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/skills/${skill.id}`)}
+                      className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-800 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer font-bold text-sm"
+                      title="See full skill details"
+                    >
+                      ➔
+                    </button>
                   </div>
                   <p className="text-xs font-black mb-4" style={{ color: skill.color }}>
                     {skill.description}
@@ -387,8 +491,7 @@ export default function SkillsPage() {
 
                 <div className="bg-gray-50/70 p-3 rounded-2xl border border-gray-100/70">
                   <svg viewBox="0 0 300 135" className="w-full h-auto">
-                    {/* Level Grid Lines */}
-                    <text x="5" y="24" className="text-[11px] font-black fill-gray-400">Super</text>
+                    <text x="5" y="24" className="text-[11px] font-black fill-gray-400">Fluent</text>
                     <line x1="55" y1="20" x2="285" y2="20" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
 
                     <text x="5" y="54" className="text-[11px] font-black fill-gray-400">Strong</text>
@@ -397,13 +500,13 @@ export default function SkillsPage() {
                     <text x="5" y="84" className="text-[11px] font-black fill-gray-400">Growing</text>
                     <line x1="55" y1="80" x2="285" y2="80" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
 
-                    <text x="5" y="114" className="text-[11px] font-black fill-gray-400">Basic</text>
+                    <text x="5" y="114" className="text-[11px] font-black fill-gray-400">Beginning</text>
                     <line x1="55" y1="110" x2="285" y2="110" stroke="#E5E7EB" strokeWidth="1" strokeDasharray="3 3" />
 
                     {/* Connecting Line */}
                     <path
                       className="skills-chart-path"
-                      d={`M 75 ${getY(skill.history[0])} L 175 ${getY(skill.history[1])} L 275 ${getY(skill.history[2])}`}
+                      d={pathD}
                       fill="none"
                       stroke={skill.color}
                       strokeWidth="4.5"
@@ -413,14 +516,23 @@ export default function SkillsPage() {
                     />
 
                     {/* Dots */}
-                    <circle cx="75" cy={getY(skill.history[0])} r="6.5" fill="white" stroke={skill.color} strokeWidth="3.5" className="skills-chart-dot" />
-                    <circle cx="175" cy={getY(skill.history[1])} r="6.5" fill="white" stroke={skill.color} strokeWidth="3.5" className="skills-chart-dot" />
-                    <circle cx="275" cy={getY(skill.history[2])} r="6.5" fill="white" stroke={skill.color} strokeWidth="3.5" className="skills-chart-dot" />
+                    {history.map((val, idx) => (
+                      <circle
+                        key={idx}
+                        cx={getX(idx)}
+                        cy={getY(val)}
+                        r="6.5"
+                        fill="white"
+                        stroke={skill.color}
+                        strokeWidth="3.5"
+                        className="skills-chart-dot"
+                      />
+                    ))}
 
                     {/* X-Axis labels */}
-                    <text x="75" y="129" textAnchor="middle" className="text-[11px] font-black fill-gray-500">Wk 1</text>
-                    <text x="175" y="129" textAnchor="middle" className="text-[11px] font-black fill-gray-500">Wk 2</text>
-                    <text x="275" y="129" textAnchor="middle" className="text-[11px] font-black fill-gray-500">Wk 3</text>
+                    <text x={getX(0)} y="129" textAnchor="middle" className="text-[10px] font-black fill-gray-500">Wk 1</text>
+                    <text x={getX(1)} y="129" textAnchor="middle" className="text-[10px] font-black fill-gray-500">Wk 2</text>
+                    <text x={getX(2)} y="129" textAnchor="middle" className="text-[10px] font-black fill-gray-500">Wk 3</text>
                   </svg>
                 </div>
               </div>

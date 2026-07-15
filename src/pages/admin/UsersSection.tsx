@@ -4,7 +4,8 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { type AdminUser, type School } from '@/mock/adminData';
 
 type UsageMode = 'general' | 'school';
-type View = 'list' | 'create' | 'edit' | 'bulk-upload';
+type View = 'list' | 'create' | 'edit' | 'bulk-upload' | 'insert-in-between' | 'insert-preview';
+
 
 interface FormState {
   childName: string;
@@ -59,6 +60,16 @@ function validatePhone(phone: string) {
 
 function validateRollNo(rollNo: string) {
   return /^[A-Z]{3}\d{3}$/.test(rollNo.trim());
+}
+
+function incrementRollNo(rollNo: string): string {
+  const match = rollNo.match(/^([A-Z]{3})(\d{3})$/);
+  if (!match) return rollNo;
+  const prefix = match[1];
+  const num = parseInt(match[2], 10);
+  const nextNum = num + 1;
+  const nextNumStr = String(nextNum).padStart(3, '0');
+  return `${prefix}${nextNumStr}`;
 }
 
 interface BulkRow {
@@ -195,6 +206,17 @@ export default function UsersSection({
   const [bulkError, setBulkError] = useState('');
   const bulkFileRef = useRef<HTMLInputElement>(null);
 
+  // In-between row insertion states
+  const [insertSchoolId, setInsertSchoolId] = useState<string>('');
+  const [insertGrade, setInsertGrade] = useState<string>('');
+  const [, setInsertAtIdx] = useState<number>(0);
+  const [insertPreviewData, setInsertPreviewData] = useState<{
+    newUser: AdminUser;
+    affected: { before: string; after: string; name: string }[];
+    computedInsertAtIdx: number;
+  } | null>(null);
+
+
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();
     const matchSearch =
@@ -235,32 +257,33 @@ export default function UsersSection({
     setView('edit');
   };
 
-  const validate = () => {
+  const validate = (customForm?: FormState) => {
+    const data = customForm || form;
     const e: Partial<Record<keyof FormState, string>> = {};
-    if (!form.childName.trim()) e.childName = 'Child name is required';
-    if (!form.age) e.age = 'Age is required';
-    if (!form.parentContact.trim()) {
+    if (!data.childName.trim()) e.childName = 'Child name is required';
+    if (!data.age) e.age = 'Age is required';
+    if (!data.parentContact.trim()) {
       e.parentContact = 'Parent contact is required';
-    } else if (!validatePhone(form.parentContact)) {
+    } else if (!validatePhone(data.parentContact)) {
       e.parentContact = 'Enter a valid 10-digit mobile number';
     }
-    if (!form.parentEmail.trim()) {
+    if (!data.parentEmail.trim()) {
       e.parentEmail = 'Parent email is required';
-    } else if (!validateEmail(form.parentEmail)) {
+    } else if (!validateEmail(data.parentEmail)) {
       e.parentEmail = 'Enter a valid email address';
     }
-    if (!form.weeklySession) e.weeklySession = 'Session time is required';
-    if (!form.usageMode) e.usageMode = 'Usage mode is required';
-    if (form.usageMode === 'school') {
-      if (!form.schoolId) e.schoolId = 'Tenant selection is required for school mode';
-      if (!form.grade) e.grade = 'Grade is required for school mode';
-      if (!form.rollNo.trim()) {
+    if (!data.weeklySession) e.weeklySession = 'Session time is required';
+    if (!data.usageMode) e.usageMode = 'Usage mode is required';
+    if (data.usageMode === 'school') {
+      if (!data.schoolId) e.schoolId = 'Tenant selection is required for school mode';
+      if (!data.grade) e.grade = 'Grade is required for school mode';
+      if (!data.rollNo.trim()) {
         e.rollNo = 'Roll number is required';
-      } else if (!validateRollNo(form.rollNo)) {
+      } else if (!validateRollNo(data.rollNo)) {
         e.rollNo = 'Roll number must be 3 letters + 3 digits (e.g. ABC123)';
       }
     } else {
-      if (form.rollNo.trim() && !validateRollNo(form.rollNo)) {
+      if (data.rollNo.trim() && !validateRollNo(data.rollNo)) {
         e.rollNo = 'Roll number must be 3 letters + 3 digits (e.g. ABC123)';
       }
     }
@@ -358,6 +381,169 @@ export default function UsersSection({
     setView('list');
   };
 
+
+  // ── Step 1: Validate + build preview (does NOT save yet) ──────────────────
+  const handleInsertPreview = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updatedForm = {
+      ...form,
+      schoolId: insertSchoolId,
+      grade: insertGrade,
+      usageMode: 'school' as const
+    };
+    setForm(updatedForm);
+    if (!validate(updatedForm)) return;
+
+    const newUser: AdminUser = {
+      id: genId(),
+      childName: form.childName.trim(),
+      age: Number(form.age),
+      parentContact: form.parentContact.trim(),
+      parentEmail: form.parentEmail.trim(),
+      weeklySession: Number(form.weeklySession),
+      usageMode: 'school',
+      grade: insertGrade,
+      schoolId: insertSchoolId,
+      rollNo: form.rollNo.trim(),
+      countryCode: form.countryCode,
+    };
+
+    // Compute insertion index dynamically based on the roll number
+    const gradeUsers = users.filter(
+      u => u.usageMode === 'school' && u.schoolId === insertSchoolId && u.grade === insertGrade
+    );
+    let computedInsertAtIdx = 0;
+    const targetRoll = newUser.rollNo;
+    if (targetRoll) {
+      const match = targetRoll.match(/^([A-Z]{3})(\d{3})$/);
+      if (match) {
+        const targetPrefix = match[1];
+        const targetNum = parseInt(match[2], 10);
+        
+        // Find index in gradeUsers where the student's roll number is >= targetNum
+        const idx = gradeUsers.findIndex(u => {
+          if (!u.rollNo) return false;
+          const uMatch = u.rollNo.match(/^([A-Z]{3})(\d{3})$/);
+          if (uMatch && uMatch[1] === targetPrefix) {
+            return parseInt(uMatch[2], 10) >= targetNum;
+          }
+          return false;
+        });
+
+        if (idx !== -1) {
+          computedInsertAtIdx = idx;
+        } else {
+          // If no student has prefix or all have numbers < targetNum, append to the end of prefix list or class list.
+          let lastPrefixIdx = -1;
+          for (let i = 0; i < gradeUsers.length; i++) {
+            const u = gradeUsers[i];
+            if (u.rollNo) {
+              const uMatch = u.rollNo.match(/^([A-Z]{3})(\d{3})$/);
+              if (uMatch && uMatch[1] === targetPrefix) {
+                lastPrefixIdx = i;
+              }
+            }
+          }
+          if (lastPrefixIdx !== -1) {
+            computedInsertAtIdx = lastPrefixIdx + 1;
+          } else {
+            computedInsertAtIdx = gradeUsers.length;
+          }
+        }
+      }
+    }
+    setInsertAtIdx(computedInsertAtIdx);
+
+    // Compute which students will have their roll numbers incremented
+    const affected: { before: string; after: string; name: string }[] = [];
+    if (targetRoll) {
+      const match = targetRoll.match(/^([A-Z]{3})(\d{3})$/);
+      if (match) {
+        const targetPrefix = match[1];
+        const targetNum = parseInt(match[2], 10);
+        users.forEach(u => {
+          if (
+            u.usageMode === 'school' &&
+            u.schoolId === insertSchoolId &&
+            u.grade === insertGrade &&
+            u.rollNo
+          ) {
+            const uMatch = u.rollNo.match(/^([A-Z]{3})(\d{3})$/);
+            if (uMatch && uMatch[1] === targetPrefix && parseInt(uMatch[2], 10) >= targetNum) {
+              affected.push({
+                name: u.childName,
+                before: u.rollNo,
+                after: incrementRollNo(u.rollNo),
+              });
+            }
+          }
+        });
+      }
+    }
+
+    setInsertPreviewData({ newUser, affected, computedInsertAtIdx });
+    setView('insert-preview');
+  };
+
+  // ── Step 2: Confirmed — actually apply the save ────────────────────────────
+  const handleInsertConfirm = () => {
+    if (!insertPreviewData) return;
+    const { newUser, computedInsertAtIdx } = insertPreviewData;
+
+    let updatedUsers = [...users];
+    const targetRoll = newUser.rollNo;
+    if (targetRoll) {
+      const match = targetRoll.match(/^([A-Z]{3})(\d{3})$/);
+      if (match) {
+        const targetPrefix = match[1];
+        const targetNum = parseInt(match[2], 10);
+        updatedUsers = updatedUsers.map(u => {
+          if (
+            u.usageMode === 'school' &&
+            u.schoolId === insertSchoolId &&
+            u.grade === insertGrade &&
+            u.rollNo
+          ) {
+            const uMatch = u.rollNo.match(/^([A-Z]{3})(\d{3})$/);
+            if (uMatch && uMatch[1] === targetPrefix && parseInt(uMatch[2], 10) >= targetNum) {
+              return { ...u, rollNo: incrementRollNo(u.rollNo) };
+            }
+          }
+          return u;
+        });
+      }
+    }
+
+    // Calculate insertion index
+    const gradeUsers = updatedUsers.filter(
+      u => u.usageMode === 'school' && u.schoolId === insertSchoolId && u.grade === insertGrade
+    );
+    let absoluteIndex = updatedUsers.length;
+    if (gradeUsers.length === 0) {
+      absoluteIndex = updatedUsers.length;
+    } else if (computedInsertAtIdx === 0) {
+      const idx = updatedUsers.findIndex(u => u.id === gradeUsers[0].id);
+      if (idx !== -1) absoluteIndex = idx;
+    } else {
+      const prevUser = gradeUsers[computedInsertAtIdx - 1];
+      const idx = updatedUsers.findIndex(u => u.id === prevUser.id);
+      if (idx !== -1) absoluteIndex = idx + 1;
+    }
+
+    const nextUsers = [...updatedUsers];
+    nextUsers.splice(absoluteIndex, 0, newUser);
+    setUsers(nextUsers);
+
+    // Reset
+    setInsertPreviewData(null);
+    setInsertAtIdx(0);
+    setForm(EMPTY_FORM);
+    setErrors({});
+    setView('list');
+  };
+
+
+
   const inputClass = (err?: string) =>
     `w-full border-2 rounded-xl px-4 py-2.5 text-sm outline-none transition-all ${err ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-teal-owl'
     }`;
@@ -439,6 +625,20 @@ export default function UsersSection({
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-gray-700 border-2 border-gray-200 transition-all hover:bg-gray-50 hover:-translate-y-0.5 bg-white cursor-pointer"
             >
               <span>📥</span> Bulk Upload
+            </button>
+
+            <button
+              onClick={() => {
+                setInsertSchoolId('');
+                setInsertGrade('');
+                setInsertAtIdx(0);
+                setForm(EMPTY_FORM);
+                setErrors({});
+                setView('insert-in-between');
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-gray-700 border-2 border-gray-200 transition-all hover:bg-gray-50 hover:-translate-y-0.5 bg-white cursor-pointer"
+            >
+              <span>↔</span> Insert In-Between
             </button>
 
             <button
@@ -587,8 +787,8 @@ export default function UsersSection({
                       key={p}
                       onClick={() => setCurrentPage(p)}
                       className={`px-2.5 py-1 rounded text-xs font-bold border transition-colors ${isCurrent
-                          ? 'bg-teal-500 border-teal-500 text-white'
-                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                        ? 'bg-teal-500 border-teal-500 text-white'
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                         }`}
                     >
                       {p}
@@ -1025,6 +1225,338 @@ export default function UsersSection({
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'insert-in-between') {
+    const gradeUsers = users.filter(
+      u => u.usageMode === 'school' && u.schoolId === insertSchoolId && u.grade === insertGrade
+    );
+
+    return (
+      <div style={{ padding: 28 }}>
+        <button
+          onClick={() => setView('list')}
+          className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors mb-6 cursor-pointer"
+        >
+          ← Back to Users List
+        </button>
+
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#1e293b', margin: '0 0 8px' }}>
+          Interposed Student Enrollment
+        </h1>
+        <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 24px' }}>
+          Add a new student and select their position in the class roll order.
+        </p>
+
+        {/* Tenant & Grade selectors */}
+        <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid #E2E8F0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', marginBottom: 24 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5">Select School/Tenant</label>
+              <select
+                value={insertSchoolId}
+                onChange={e => { setInsertSchoolId(e.target.value); setInsertAtIdx(0); }}
+                className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none bg-white focus:border-teal-owl"
+              >
+                <option value="">Select school...</option>
+                {schools.map(s => <option key={s.id} value={s.id}>{s.name} ({s.branch})</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1.5">Select Grade</label>
+              <select
+                value={insertGrade}
+                onChange={e => { setInsertGrade(e.target.value); setInsertAtIdx(0); }}
+                className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none bg-white focus:border-teal-owl"
+              >
+                <option value="">Select grade...</option>
+                {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {insertSchoolId && insertGrade && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left: Current class roll list (read-only) */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+                <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest mb-4">
+                  Current Class ({gradeUsers.length} Students)
+                </h3>
+                {gradeUsers.length === 0 ? (
+                  <div className="py-8 text-center text-gray-400 text-xs">
+                    No students in this class yet. The new student will be added as the first entry.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {gradeUsers.map((user, idx) => (
+                      <div
+                        key={user.id}
+                        className="flex items-center justify-between p-3.5 bg-slate-50/80 rounded-xl border border-slate-100"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-black shrink-0">
+                            {idx + 1}
+                          </span>
+                          <div>
+                            <div className="text-sm font-bold text-gray-800">{user.childName}</div>
+                            <div className="text-xs text-gray-500 font-mono mt-0.5">
+                              Roll: {user.rollNo || '—'} | Contact: {user.parentContact}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs font-bold text-gray-400">{user.age} yrs</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Student details form */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm sticky top-6 space-y-4">
+                <div>
+                  <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">New Student Details</h3>
+                  <p className="text-xs text-gray-400 mt-1">Fill in the details and click Confirm to preview changes.</p>
+                </div>
+
+                <form onSubmit={handleInsertPreview} className="space-y-3 text-xs">
+                  {/* Child Name */}
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Child Name *</label>
+                    <input
+                      type="text" value={form.childName}
+                      onChange={e => setField('childName', e.target.value)}
+                      placeholder="e.g. Rahul Kumar"
+                      className={inputClass(errors.childName)}
+                    />
+                    {errors.childName && <p className="text-[10px] text-red-500 mt-0.5">{errors.childName}</p>}
+                  </div>
+
+                  {/* Age */}
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Child Age *</label>
+                    <select value={form.age} onChange={e => setField('age', e.target.value)} className={inputClass(errors.age) + ' bg-white'}>
+                      <option value="">Select age...</option>
+                      {AGES.map(a => <option key={a} value={a}>{a} years</option>)}
+                    </select>
+                    {errors.age && <p className="text-[10px] text-red-500 mt-0.5">{errors.age}</p>}
+                  </div>
+
+                  {/* Parent Contact */}
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Parent Contact *</label>
+                    <div className="flex gap-1.5">
+                      <select
+                        value={form.countryCode}
+                        onChange={e => setField('countryCode', e.target.value)}
+                        className="border border-gray-200 rounded-xl px-2 py-1.5 text-xs outline-none bg-white focus:border-teal-owl"
+                        style={{ width: '70px' }}
+                      >
+                        {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                      </select>
+                      <input
+                        type="tel" value={form.parentContact}
+                        onChange={e => setField('parentContact', e.target.value.replace(/\D/g, ''))}
+                        placeholder="10-digit number" maxLength={10}
+                        className={`${inputClass(errors.parentContact)} flex-1`}
+                      />
+                    </div>
+                    {errors.parentContact && <p className="text-[10px] text-red-500 mt-0.5">{errors.parentContact}</p>}
+                  </div>
+
+                  {/* Parent Email */}
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Parent Email *</label>
+                    <input
+                      type="email" value={form.parentEmail}
+                      onChange={e => setField('parentEmail', e.target.value)}
+                      placeholder="parent@example.com"
+                      className={inputClass(errors.parentEmail)}
+                    />
+                    {errors.parentEmail && <p className="text-[10px] text-red-500 mt-0.5">{errors.parentEmail}</p>}
+                  </div>
+
+                  {/* Session Duration */}
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Session Duration *</label>
+                    <select value={form.weeklySession} onChange={e => setField('weeklySession', e.target.value)} className={inputClass(errors.weeklySession) + ' bg-white'}>
+                      <option value="">Select minutes...</option>
+                      {SESSION_TIMES.map(t => <option key={t} value={t}>{t} minutes</option>)}
+                    </select>
+                    {errors.weeklySession && <p className="text-[10px] text-red-500 mt-0.5">{errors.weeklySession}</p>}
+                  </div>
+
+                  {/* Roll Number */}
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Roll Number *</label>
+                    <input
+                      type="text" value={form.rollNo}
+                      onChange={e => setField('rollNo', e.target.value.toUpperCase())}
+                      placeholder="e.g. RAU123" maxLength={6}
+                      className={inputClass(errors.rollNo)}
+                    />
+                    {errors.rollNo && <p className="text-[10px] text-red-500 mt-0.5">{errors.rollNo}</p>}
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setView('list')}
+                      className="px-4 py-2 rounded-xl text-gray-600 bg-gray-50 hover:bg-gray-100 font-bold transition-all cursor-pointer border border-gray-200 text-xs"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-xl text-gray-900 font-bold transition-all hover:-translate-y-0.5 cursor-pointer text-xs"
+                      style={{ background: '#FFEA11', boxShadow: '0 4px 12px rgba(255,234,17,0.3)' }}
+                    >
+                      Preview →
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ─── Insert Preview View ─────────────────────────────────────────────────────
+  if (view === 'insert-preview' && insertPreviewData) {
+    const { newUser, affected } = insertPreviewData;
+    const gradeUsers = users.filter(
+      u => u.usageMode === 'school' && u.schoolId === insertSchoolId && u.grade === insertGrade
+    );
+    const school = schools.find(s => s.id === insertSchoolId);
+
+    return (
+      <div style={{ padding: 28 }}>
+        <button
+          onClick={() => setView('insert-in-between')}
+          className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-700 transition-colors mb-6 cursor-pointer"
+        >
+          ← Back to Edit Form
+        </button>
+
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#1e293b', margin: '0 0 4px' }}>
+          Preview Changes
+        </h1>
+        <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 24px' }}>
+          Review the impact before saving. Roll numbers of existing students will be adjusted automatically.
+        </p>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* New Student Card */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full bg-green-500" />
+              <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">New Student Being Added</h3>
+            </div>
+            <div className="bg-green-50 border border-green-100 rounded-xl p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500 font-semibold">Name</span>
+                <span className="font-black text-gray-800">{newUser.childName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 font-semibold">Roll No</span>
+                <span className="font-black text-green-700 font-mono">{newUser.rollNo}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 font-semibold">Age</span>
+                <span className="font-bold text-gray-700">{newUser.age} yrs</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 font-semibold">Tenant</span>
+                <span className="font-bold text-gray-700">{school?.name} ({school?.branch})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 font-semibold">Grade</span>
+                <span className="font-bold text-gray-700">{insertGrade}</span>
+              </div>
+              <div className="flex justify-between items-start gap-4">
+                <span className="text-gray-500 font-semibold shrink-0">Insert Position</span>
+                <span className="font-black text-teal-700 text-right">
+                  {insertPreviewData.computedInsertAtIdx === 0 ? (
+                    gradeUsers.length === 0
+                      ? 'Top of class (First entry)'
+                      : `Top of class (Before Row 1 — ${gradeUsers[0]?.childName})`
+                  ) : insertPreviewData.computedInsertAtIdx === gradeUsers.length ? (
+                    `End of class (After Row ${gradeUsers.length} — ${gradeUsers[gradeUsers.length - 1]?.childName})`
+                  ) : (
+                    `Between Row ${insertPreviewData.computedInsertAtIdx} (${gradeUsers[insertPreviewData.computedInsertAtIdx - 1]?.childName}) and Row ${insertPreviewData.computedInsertAtIdx + 1} (${gradeUsers[insertPreviewData.computedInsertAtIdx]?.childName})`
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Affected Roll Numbers */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest">
+                Roll Numbers That Will Change
+              </h3>
+            </div>
+
+            {affected.length === 0 ? (
+              <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-6 text-center">
+                <p className="text-sm font-bold text-gray-500">No conflicts</p>
+                <p className="text-xs text-gray-400 mt-1">No existing student has the same roll number prefix + number. No cascading changes needed.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 font-semibold">
+                  ⚠️ {affected.length} student{affected.length > 1 ? 's' : ''} will have their roll number incremented.
+                </p>
+                <div className="overflow-hidden rounded-xl border border-slate-200">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="py-2.5 px-3 font-black text-slate-600">Student</th>
+                        <th className="py-2.5 px-3 font-black text-slate-600">Before</th>
+                        <th className="py-2.5 px-3 font-black text-slate-600">After</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {affected.map((row, i) => (
+                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                          <td className="py-2.5 px-3 font-bold text-gray-800">{row.name}</td>
+                          <td className="py-2.5 px-3 font-mono text-red-600 font-bold">{row.before}</td>
+                          <td className="py-2.5 px-3 font-mono text-green-600 font-bold">→ {row.after}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+          <button
+            onClick={() => setView('insert-in-between')}
+            className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+          >
+            ← Edit Details
+          </button>
+          <button
+            onClick={handleInsertConfirm}
+            className="px-6 py-2.5 rounded-xl text-sm font-black transition-all hover:-translate-y-0.5 cursor-pointer shadow-md"
+            style={{ background: '#FFEA11', color: '#1a1a1a', boxShadow: '0 4px 12px rgba(255,234,17,0.4)' }}
+          >
+            ✓ Confirm & Save Student
+          </button>
         </div>
       </div>
     );

@@ -10,9 +10,13 @@ import WarmupPage from '@/pages/WarmupPage';
 import DashboardPage from '@/pages/DashboardPage';
 import ProfilePage from '@/pages/ProfilePage';
 import SkillsPage from '@/pages/SkillsPage';
+import SkillDetailPage from '@/pages/SkillDetailPage';
 import WeeklyAssessmentPage from '@/pages/WeeklyAssessmentPage';
 import ParentPage from '@/pages/ParentPage';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
+import AdminStudentAssessmentPage from '@/pages/admin/AdminStudentAssessmentPage';
+import AdminStudentSkillPage from '@/pages/admin/AdminStudentSkillPage';
+
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoggedIn } = useApp();
@@ -39,9 +43,13 @@ function App() {
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/skills" element={<ProtectedRoute><SkillsPage /></ProtectedRoute>} />
+        <Route path="/skills/:skillId" element={<ProtectedRoute><SkillDetailPage /></ProtectedRoute>} />
         <Route path="/assessment" element={<ProtectedRoute><WeeklyAssessmentPage /></ProtectedRoute>} />
         <Route path="/parent" element={<ProtectedRoute><ParentPage /></ProtectedRoute>} />
         <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+        <Route path="/admin/student/:userId/assessment" element={<AdminRoute><AdminStudentAssessmentPage /></AdminRoute>} />
+        <Route path="/admin/student/:userId/skill" element={<AdminRoute><AdminStudentSkillPage /></AdminRoute>} />
+
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

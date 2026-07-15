@@ -34,7 +34,7 @@ export const MOCK_ANIMALS: Record<string, { id: string; name: string; emoji: str
 };
 
 export const MOCK_INTERESTS = [
-  { id: 'sports', label: 'Sports', emoji: '⚽', description: 'Games & movement' },
+  { id: 'everyday_wonders', label: 'Everyday Wonders', emoji: '✨', description: 'Finding magic in the ordinary' },
   { id: 'nature', label: 'Nature', emoji: '🌿', description: 'Plants & animals' },
   { id: 'art', label: 'Art', emoji: '🎨', description: 'Colors & creativity' },
   { id: 'music', label: 'Music', emoji: '🎵', description: 'Sounds & rhythm' },
@@ -286,7 +286,7 @@ export const MOCK_CHILD_PROFILE = {
   email: 'alex@example.com',
   phone: '',
   avatar: '🦉',
-  interests: ['sports', 'nature'],
+  interests: ['everyday_wonders', 'nature'],
   weeklySession: 20,
   parentPhone: '9876543210',
   passwordEnv: 'forest',
