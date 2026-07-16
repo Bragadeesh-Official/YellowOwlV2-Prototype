@@ -8,14 +8,15 @@ import AssessmentSection from './AssessmentSection';
 import AnalysisSection from './AnalysisSection';
 import logo from '@/assets/yellowowllogo.png';
 
-type Section = 'schools' | 'users' | 'assessment' | 'analysis' | 'analysis_skills';
+type Section = 'schools' | 'users' | 'assessment' | 'analysis_weekly' | 'analysis_warmup' | 'analysis_skills';
 
 const NAV_ITEMS: { key: Section; label: string; short: string }[] = [
   { key: 'schools', label: 'Tenants', short: 'Te' },
   { key: 'users', label: 'Users', short: 'Us' },
-  { key: 'analysis', label: 'User Assessment Analysis', short: 'Ua' },
-  { key: 'analysis_skills', label: 'User Skill Analysis', short: 'Us' },
-  { key: 'assessment', label: 'Weekly Assessment', short: 'As' },
+  { key: 'analysis_warmup', label: 'Warm-up Analysis', short: 'Wu' },
+  { key: 'analysis_weekly', label: 'Weekly Assessment Analysis', short: 'Wa' },
+  { key: 'analysis_skills', label: 'Skill Analysis', short: 'Sa' },
+  { key: 'assessment', label: 'Configure Assessment', short: 'Ca' },
 ];
 
 export default function AdminDashboard() {
@@ -160,8 +161,11 @@ export default function AdminDashboard() {
         {section === 'assessment' && (
           <AssessmentSection schools={schools} />
         )}
-        {section === 'analysis' && (
-          <AnalysisSection users={users} schools={schools} mode="assessments" />
+        {section === 'analysis_weekly' && (
+          <AnalysisSection users={users} schools={schools} mode="weekly" />
+        )}
+        {section === 'analysis_warmup' && (
+          <AnalysisSection users={users} schools={schools} mode="warmup" />
         )}
         {section === 'analysis_skills' && (
           <AnalysisSection users={users} schools={schools} mode="skills" />

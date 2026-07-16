@@ -35,6 +35,7 @@ export interface AdminUser {
   schoolId?: string;
   rollNo?: string;
   countryCode?: string;
+  warmupStatus?: 'completed' | 'pending';
 }
 
 export const MOCK_SCHOOLS: School[] = [
@@ -101,6 +102,7 @@ export const MOCK_ADMIN_USERS: AdminUser[] = [
     schoolId: 's1',
     rollNo: 'ARJ101',
     countryCode: '+91',
+    warmupStatus: 'completed',
   },
   {
     id: 'u2',
@@ -112,6 +114,7 @@ export const MOCK_ADMIN_USERS: AdminUser[] = [
     usageMode: 'general',
     rollNo: 'PRI202',
     countryCode: '+91',
+    warmupStatus: 'pending',
   },
   {
     id: 'u3',
@@ -125,5 +128,6 @@ export const MOCK_ADMIN_USERS: AdminUser[] = [
     schoolId: 's2',
     rollNo: 'ADI303',
     countryCode: '+91',
+    warmupStatus: 'completed',
   },
 ];

@@ -10,7 +10,7 @@ import { FileDown } from 'lucide-react';
 interface AnalysisSectionProps {
   users: AdminUser[];
   schools: School[];
-  mode: 'assessments' | 'skills';
+  mode: 'weekly' | 'warmup' | 'skills';
 }
 
 const GRADES = Array.from({ length: 5 }, (_, i) => `Grade ${i + 3}`);
@@ -53,34 +53,61 @@ export default function AnalysisSection({ users, schools, mode }: AnalysisSectio
       return userId.charCodeAt(qIdx % userId.length) % numOptions;
     };
 
-    const rows = filteredUsers.map(user => {
-      const rowData: Record<string, string | number> = {
-        'Student Name': user.childName,
-        'Roll No': user.rollNo || '—',
-        'Mobile': `${user.countryCode || '+91'} ${user.parentContact}`,
-        'Email': user.parentEmail || '—',
-      };
+    if (mode === 'warmup') {
+      const rows = filteredUsers.map(user => {
+        const rowData: Record<string, string | number> = {
+          'Student Name': user.childName,
+          'Roll No': user.rollNo || '—',
+          'Mobile': `${user.countryCode || '+91'} ${user.parentContact}`,
+          'Email': user.parentEmail || '—',
+        };
 
-      const wData = user.age >= 12 ? SENIOR_WARMUP : JUNIOR_WARMUP;
-      wData.questions.forEach((q, i) => {
-        const opt = q.options[getMockAnswerIndex(user.id, i, q.options.length)];
-        rowData[`Q${i + 1} Answer`] = opt.text;
-        rowData[`Q${i + 1} Score`]  = opt.score;
+        const wData = user.age >= 12 ? SENIOR_WARMUP : JUNIOR_WARMUP;
+        wData.questions.forEach((q, i) => {
+          const opt = q.options[getMockAnswerIndex(user.id, i, q.options.length)];
+          rowData[`Q${i + 1} Answer`] = opt.text;
+          rowData[`Q${i + 1} Score`]  = opt.score;
+        });
+
+        return rowData;
       });
 
-      return rowData;
-    });
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Warm-up Report');
+      const maxLens = Object.keys(rows[0] || {}).map(k => {
+        let max = k.length;
+        rows.forEach(r => { const v = String(r[k] ?? ''); if (v.length > max) max = v.length; });
+        return { wch: Math.min(max + 2, 45) };
+      });
+      ws['!cols'] = maxLens;
+      XLSX.writeFile(wb, `${schoolName}_${selectedGrade.replace(/\s+/g, '_')}_Warmup_Report.xlsx`);
+    } else if (mode === 'weekly') {
+      const rows = filteredUsers.map(user => {
+        const rowData: Record<string, string | number> = {
+          'Student Name': user.childName,
+          'Roll No': user.rollNo || '—',
+          'Mobile': `${user.countryCode || '+91'} ${user.parentContact}`,
+          'Email': user.parentEmail || '—',
+          'Week 1 Score (%)': 80,
+          'Week 2 Score (%)': 88,
+          'Overall Weekly Avg (%)': 84,
+        };
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Assessment Report');
-    const maxLens = Object.keys(rows[0] || {}).map(k => {
-      let max = k.length;
-      rows.forEach(r => { const v = String(r[k] ?? ''); if (v.length > max) max = v.length; });
-      return { wch: Math.min(max + 2, 45) };
-    });
-    ws['!cols'] = maxLens;
-    XLSX.writeFile(wb, `${schoolName}_${selectedGrade.replace(/\s+/g, '_')}_Assessment_Report.xlsx`);
+        return rowData;
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Weekly Assessment Report');
+      const maxLens = Object.keys(rows[0] || {}).map(k => {
+        let max = k.length;
+        rows.forEach(r => { const v = String(r[k] ?? ''); if (v.length > max) max = v.length; });
+        return { wch: Math.min(max + 2, 45) };
+      });
+      ws['!cols'] = maxLens;
+      XLSX.writeFile(wb, `${schoolName}_${selectedGrade.replace(/\s+/g, '_')}_Weekly_Assessment_Report.xlsx`);
+    }
   };
 
   return (
@@ -88,11 +115,13 @@ export default function AnalysisSection({ users, schools, mode }: AnalysisSectio
       {/* Page Heading */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, color: '#1e293b', margin: 0 }}>
-          {mode === 'skills' ? 'User Skill Analysis' : 'User Assessment Analysis'}
+          {mode === 'skills' ? 'Skill Analysis' : mode === 'weekly' ? 'Weekly Assessment Analysis' : 'Warm-up Analysis'}
         </h1>
         <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
           {mode === 'skills'
             ? 'Track skill-based progress visualization and individual student core capabilities'
+            : mode === 'weekly'
+            ? 'View weekly assessment challenges, progress, and performance'
             : 'View diagnostics and warm-up assessment results per student'}
         </p>
       </div>
@@ -135,15 +164,15 @@ export default function AnalysisSection({ users, schools, mode }: AnalysisSectio
                 Class Enrollment ({filteredUsers.length} Students)
               </h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Click <strong>"{mode === 'assessments' ? 'View Assessments' : 'View Skill'}"</strong> to open the student's detailed report.
+                Click <strong>"{mode === 'weekly' ? 'View Weekly' : mode === 'warmup' ? 'View Warm-up' : 'View Skill'}"</strong> to open the student's detailed report.
               </p>
             </div>
 
-            {mode === 'assessments' && (
+            {mode !== 'skills' && (
               <button
                 onClick={handleDownloadExcel}
                 disabled={filteredUsers.length === 0}
-                className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer border-none"
               >
                 <FileDown size={14} /> Download Grade Report (Excel)
               </button>
@@ -166,6 +195,7 @@ export default function AnalysisSection({ users, schools, mode }: AnalysisSectio
                     <th className="py-3 px-4 font-black text-slate-600">Age</th>
                     <th className="py-3 px-4 font-black text-slate-600">Parent Contact</th>
                     {mode === 'skills' && <th className="py-3 px-4 font-black text-slate-600">Latest Level</th>}
+                    {mode === 'warmup' && <th className="py-3 px-4 font-black text-slate-600">Warm-up Status</th>}
                     <th className="py-3 px-4 font-black text-slate-600 text-center">Action</th>
                   </tr>
                 </thead>
@@ -190,18 +220,37 @@ export default function AnalysisSection({ users, schools, mode }: AnalysisSectio
                           </td>
                         )}
 
+                        {mode === 'warmup' && (
+                          <td className="py-3.5 px-4">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                              user.warmupStatus === 'completed'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                : 'bg-amber-50 text-amber-700 border-amber-100'
+                            }`}>
+                              {user.warmupStatus === 'completed' ? 'Completed' : 'Pending'}
+                            </span>
+                          </td>
+                        )}
+
                         <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                          {mode === 'assessments' ? (
+                          {mode === 'weekly' ? (
                             <button
-                              onClick={() => navigate(`/admin/student/${user.id}/assessment`)}
-                              className="px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all bg-slate-100 text-teal-700 hover:bg-teal-600 hover:text-white"
+                              onClick={() => navigate(`/admin/student/${user.id}/weekly`)}
+                              className="px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all bg-slate-100 text-indigo-700 hover:bg-indigo-600 hover:text-white border-none"
                             >
-                              View Assessments
+                              View Weekly
+                            </button>
+                          ) : mode === 'warmup' ? (
+                            <button
+                              onClick={() => navigate(`/admin/student/${user.id}/warmup`)}
+                              className="px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all bg-slate-100 text-teal-700 hover:bg-teal-600 hover:text-white border-none"
+                            >
+                              View Warm-up
                             </button>
                           ) : (
                             <button
                               onClick={() => navigate(`/admin/student/${user.id}/skill`)}
-                              className="px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all bg-slate-100 text-purple-700 hover:bg-purple-600 hover:text-white"
+                              className="px-4 py-2 rounded-xl text-xs font-bold cursor-pointer transition-all bg-slate-100 text-purple-700 hover:bg-purple-600 hover:text-white border-none"
                             >
                               View Skill
                             </button>

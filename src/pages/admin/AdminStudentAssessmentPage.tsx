@@ -16,7 +16,7 @@ export default function AdminStudentAssessmentPage() {
       <div style={{ padding: 40, textAlign: 'center' }}>
         <p className="text-gray-400 text-sm font-bold">Student not found.</p>
         <button
-          onClick={() => navigate('/admin', { state: { section: 'analysis' } })}
+          onClick={() => navigate('/admin', { state: { section: 'analysis_warmup' } })}
           className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-xl text-xs font-bold cursor-pointer"
         >
           Go Back
@@ -46,7 +46,7 @@ export default function AdminStudentAssessmentPage() {
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <button
-          onClick={() => navigate('/admin', { state: { section: 'analysis' } })}
+          onClick={() => navigate('/admin', { state: { section: 'analysis_warmup' } })}
           className="w-9 h-9 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-all cursor-pointer"
         >
           <ArrowLeft size={16} />

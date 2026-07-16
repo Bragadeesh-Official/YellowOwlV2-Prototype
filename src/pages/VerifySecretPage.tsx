@@ -134,7 +134,7 @@ export default function VerifySecretPage() {
         {/* Logo & heading */}
         <div className="flex flex-col items-center mb-7">
           <div ref={owlRef}>
-            <img src={logo} alt="Yellow Owl" style={{ height: 72, objectFit: 'contain', marginBottom: 10 }} />
+            <img src={logo} alt="Yellow Owl" style={{ height: 140, objectFit: 'contain', marginBottom: 12 }} />
           </div>
           <h1 className="text-2xl font-bold text-gray-800 mb-1">Verify OTP</h1>
           <p className="text-gray-500 text-sm text-center leading-relaxed">

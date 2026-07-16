@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { type School, type AdminUser } from '@/mock/adminData';
 import Stepper from './Stepper';
-import { Eye, Pencil, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Trash2, Plus } from 'lucide-react';
 
 type Board = 'CBSE' | 'Stateboard' | 'ICSE' | 'IB';
 type View = 'list' | 'create' | 'edit' | 'view-tenant' | 'add-student' | 'bulk-upload';
@@ -174,65 +174,115 @@ function downloadTemplate() {
 
 // ─── Tenant Form Fields ──────────────────────────────────────────────────────
 // ─── Tenant Form Fields ──────────────────────────────────────────────────────
-function SchoolFormFields({ form, errors, onChange, hideGrades, showGradesOnly }: {
+function SchoolFormFields({ form, errors, onChange, hideGrades, showGradesOnly, allowRemove }: {
   form: SchoolForm;
   errors: ErrMap;
   onChange: (key: keyof SchoolForm, val: any) => void;
   hideGrades?: boolean;
   showGradesOnly?: boolean;
+  allowRemove?: boolean;
 }) {
   if (showGradesOnly) {
-    const num = Number(form.numberOfGrades) || 0;
+    const num = form.gradeNames.length;
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <div>
-          <label style={lbl}>Number of Grades</label>
-          <input type="number" min={1} max={12} value={form.numberOfGrades} placeholder="e.g. 5"
-            onChange={e => {
-              const val = e.target.value;
-              onChange('numberOfGrades', val);
-              const num = Number(val);
-              if (!isNaN(num) && num > 0) {
-                const newNames = [...form.gradeNames];
-                if (newNames.length > num) {
-                  onChange('gradeNames', newNames.slice(0, num));
-                } else {
-                  while (newNames.length < num) {
-                    newNames.push(`Grade ${newNames.length + 3}`);
-                  }
-                  onChange('gradeNames', newNames);
-                }
-              }
-            }} style={iStyle(errors.numberOfGrades)} />
-          {errors.numberOfGrades && <p style={errTxt}>{errors.numberOfGrades}</p>}
-        </div>
-
-        {num > 0 && num <= 12 && (
-          <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 18 }}>
-            <label style={{ ...lbl, marginBottom: 12 }}>Grade Names (Prefilled - Customise if needed)</label>
+        <div style={{ paddingTop: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <label style={{ ...lbl, margin: 0 }}>Grade Names</label>
+            <button
+              type="button"
+              onClick={() => {
+                const newNames = [...form.gradeNames, `Grade ${form.gradeNames.length + 3}`];
+                onChange('gradeNames', newNames);
+                onChange('numberOfGrades', String(newNames.length));
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 10,
+                border: '1px solid #cbd5e1',
+                background: 'white',
+                color: '#475569',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'Andika, system-ui, sans-serif',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = '#FFEA11';
+                e.currentTarget.style.backgroundColor = '#FFFDE7';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = '#cbd5e1';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
+            >
+              <Plus size={16} /> Add Grade
+            </button>
+          </div>
+          {num > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-              {Array.from({ length: num }).map((_, idx) => {
-                const currentName = form.gradeNames[idx] || `Grade ${idx + 3}`;
+              {form.gradeNames.map((currentName, idx) => {
                 return (
                   <div key={idx}>
                     <label style={{ ...lbl, fontSize: 12, fontWeight: 500, color: '#64748b' }}>Grade {idx + 1} Name</label>
-                    <input
-                      type="text"
-                      value={currentName}
-                      placeholder={`Grade ${idx + 3}`}
-                      onChange={e => {
-                        const newNames = [...form.gradeNames];
-                        newNames[idx] = e.target.value;
-                        onChange('gradeNames', newNames);
-                      }}
-                      style={iStyle()}
-                    />
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        value={currentName}
+                        placeholder={`Grade ${idx + 3}`}
+                        onChange={e => {
+                          const newNames = [...form.gradeNames];
+                          newNames[idx] = e.target.value;
+                          onChange('gradeNames', newNames);
+                        }}
+                        style={{ ...iStyle(), flex: 1 }}
+                      />
+                      {allowRemove && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newNames = form.gradeNames.filter((_, i) => i !== idx);
+                            onChange('gradeNames', newNames);
+                            onChange('numberOfGrades', String(newNames.length));
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 44,
+                            height: 44,
+                            borderRadius: 12,
+                            border: '1px solid #fee2e2',
+                            background: '#fef2f2',
+                            color: '#dc2626',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.background = '#fca5a5';
+                            e.currentTarget.style.color = '#b91c1c';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.background = '#fef2f2';
+                            e.currentTarget.style.color = '#dc2626';
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        {errors.numberOfGrades && <p style={errTxt}>{errors.numberOfGrades}</p>}
       </div>
     );
   }
@@ -759,13 +809,8 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
         e = step0Errors;
       } else if (step === 1) {
         // Validate Grades Setup
-        if (!form.numberOfGrades) {
-          e.numberOfGrades = 'Number of grades is required';
-        } else {
-          const num = Number(form.numberOfGrades);
-          if (isNaN(num) || num < 1 || num > 12) {
-            e.numberOfGrades = 'Number of grades must be between 1 and 12';
-          }
+        if (form.gradeNames.length === 0) {
+          e.numberOfGrades = 'Please add at least one grade';
         }
       }
       setErrors(e);
@@ -812,7 +857,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
           )}
 
           {step === 1 && (
-            <SchoolFormFields form={form} errors={errors} onChange={changeForm} showGradesOnly={true} />
+            <SchoolFormFields form={form} errors={errors} onChange={changeForm} showGradesOnly={true} allowRemove={true} />
           )}
 
           {step === 2 && (
@@ -831,7 +876,6 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                 <FieldRow label="Pincode" value={form.pincode} />
                 {form.contactEmail && <FieldRow label="Contact Email" value={form.contactEmail} />}
                 {form.contactPhone && <FieldRow label="Contact Phone" value={`${form.countryCode || '+91'} ${form.contactPhone}`} />}
-                {form.numberOfGrades && <FieldRow label="Number of Grades" value={form.numberOfGrades} />}
                 {form.gradeNames && form.gradeNames.length > 0 && (
                   <FieldRow label="Grade Names" value={form.gradeNames.filter(Boolean).join(', ')} />
                 )}
@@ -858,19 +902,14 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
     const handleEditNext = () => {
       let e: ErrMap = {};
       if (editStep === 0) {
-        // Validate Tenant Details (exclude numberOfGrades)
         const allErrors = validateForm(editForm);
         const { numberOfGrades, ...step0Errors } = allErrors;
         e = step0Errors;
       } else if (editStep === 1) {
-        // Validate Grades Setup
-        if (!editForm.numberOfGrades) {
-          e.numberOfGrades = 'Number of grades is required';
-        } else {
-          const num = Number(editForm.numberOfGrades);
-          if (isNaN(num) || num < 1 || num > 12) {
-            e.numberOfGrades = 'Number of grades must be between 1 and 12';
-          }
+        if (editForm.gradeNames.length === 0) {
+          e.numberOfGrades = 'Please add at least one grade';
+        } else if (editForm.gradeNames.some(g => !g.trim())) {
+          e.numberOfGrades = 'All grade names must be filled';
         }
       }
       setEditErrors(e);
@@ -893,8 +932,8 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
         contactEmail: editForm.contactEmail || undefined,
         contactPhone: editForm.contactPhone || undefined,
         countryCode: editForm.countryCode || undefined,
-        numberOfGrades: editForm.numberOfGrades ? Number(editForm.numberOfGrades) : undefined,
-        gradeNames: editForm.gradeNames.map((name, i) => name || `Grade ${i + 3}`),
+        numberOfGrades: editForm.gradeNames.length,
+        gradeNames: editForm.gradeNames,
       } : s));
       setView('list');
     };
@@ -934,7 +973,6 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                 <FieldRow label="Pincode" value={editForm.pincode} />
                 {editForm.contactEmail && <FieldRow label="Contact Email" value={editForm.contactEmail} />}
                 {editForm.contactPhone && <FieldRow label="Contact Phone" value={`${editForm.countryCode || '+91'} ${editForm.contactPhone}`} />}
-                {editForm.numberOfGrades && <FieldRow label="Number of Grades" value={editForm.numberOfGrades} />}
                 {editForm.gradeNames && editForm.gradeNames.length > 0 && (
                   <FieldRow label="Grade Names" value={editForm.gradeNames.filter(Boolean).join(', ')} />
                 )}

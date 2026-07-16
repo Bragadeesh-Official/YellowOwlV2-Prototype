@@ -214,7 +214,7 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20, marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: '#1e293b', margin: 0 }}>
-            Weekly Assessment Planner
+            Configure Assessment
           </h1>
           <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
             Configure targets and log weekly assessment milestones.

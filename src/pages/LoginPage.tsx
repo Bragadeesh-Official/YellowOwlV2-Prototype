@@ -246,7 +246,7 @@ export default function LoginPage() {
           >
             {/* Mobile-only logo */}
             <div className="flex flex-col items-center mb-6 md:hidden">
-              <img src={logo} alt="Yellow Owl Logo" style={{ height: 72, objectFit: 'contain', marginBottom: 8 }} />
+              <img src={logo} alt="Yellow Owl Logo" style={{ height: 140, objectFit: 'contain', marginBottom: 12 }} />
               <h1 className="text-2xl font-black text-gray-800">Yellow Owl</h1>
               <p className="text-gray-400 text-sm text-center">Your Learning Adventure Begins!</p>
             </div>
@@ -373,6 +373,7 @@ export default function LoginPage() {
                     value={inviteCode}
                     onChange={(e) => { setInviteCode(e.target.value); setChildError(false); }}
                     placeholder="Your roll no..."
+                    maxLength={8}
                     className="w-full border-2 rounded-xl p-3 text-lg outline-none transition-all focus:border-[#FFEA11]"
                     style={{
                       borderColor: childError ? '#ef4444' : '#FFEA11',
