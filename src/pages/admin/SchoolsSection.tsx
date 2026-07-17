@@ -38,7 +38,7 @@ const EMPTY_FORM: SchoolForm = {
   numberOfGrades: '',
   gradeNames: [],
 };
-const CREATE_STEPS = ['Tenant Details', 'Grades Setup', 'Review'];
+const CREATE_STEPS = ['Tenant Details', 'Review'];
 
 const COUNTRY_CODES = [
   { code: '+91', label: '🇮🇳 +91' },
@@ -455,6 +455,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
 }) {
   const [view, setView] = useState<View>('list');
   const [selectedTenant, setSelectedTenant] = useState<School | null>(null);
+  const [viewingSchool, setViewingSchool] = useState<School | null>(null);
   const [editSchool, setEditSchool] = useState<School | null>(null);
 
   // List filters
@@ -626,32 +627,20 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #f1f5f9' }}>
-                  {['Tenant Name', 'Branch', 'Board', 'Number of Grades', 'Address', 'Actions'].map(h => (
+                  {['Tenant Name', 'Branch', 'Board', 'Address', 'Actions'].map(h => (
                     <th key={h} style={{ textAlign: h === 'Actions' ? 'center' : 'left', padding: '14px 16px', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>No tenants found</td></tr>
+                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>No tenants found</td></tr>
                 ) : paginatedSchools.map((s, i) => {
                   return (
                     <tr key={s.id} style={{ background: i % 2 === 0 ? 'white' : '#fafbfc', borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '14px 16px', fontWeight: 600, color: '#1e293b' }}>{s.name}</td>
                       <td style={{ padding: '14px 16px', color: '#475569' }}>{s.branch}</td>
                       <td style={{ padding: '14px 16px' }}><BoardBadge board={s.board} /></td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <span style={{
-                          padding: '4px 12px',
-                          borderRadius: '12px',
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          backgroundColor: 'rgba(42, 213, 180, 0.15)',
-                          color: '#20a78c'
-                        }}>
-                          {s.numberOfGrades || 0} Grade{(s.numberOfGrades || 0) !== 1 ? 's' : ''}
-                        </span>
-                      </td>
                       <td style={{ padding: '14px 16px', color: '#64748b', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.address}</td>
                       <td style={{ padding: '14px 16px', textAlign: 'center' }}>
                         {deleteId === s.id ? (
@@ -664,7 +653,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                           </span>
                         ) : (
                           <span style={{ display: 'inline-flex', gap: 8 }}>
-                            <button onClick={() => { setSelectedTenant(s); setActiveGradeTab('All'); setView('view-tenant'); }}
+                            <button onClick={() => { setViewingSchool(s); }}
                               title="View Details"
                               style={{ width: 32, height: 32, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, border: 'none', background: '#e0f2fe', color: '#0369a1', cursor: 'pointer', transition: 'all 0.2s' }}>
                               <Eye size={16} />
@@ -794,6 +783,70 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
             )}
           </div>
         </div>
+        {viewingSchool && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}>
+            <div style={{
+              background: 'white',
+              borderRadius: 20,
+              width: '90%',
+              maxWidth: 550,
+              padding: 32,
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              border: '1px solid #e2e8f0',
+              position: 'relative',
+              fontFamily: 'Andika, system-ui, sans-serif',
+              textAlign: 'left',
+            }}>
+              <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0' }}>
+                {viewingSchool.name}
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+                <span style={{ fontSize: 13, color: '#64748b', fontWeight: 600 }}>
+                  📍 {viewingSchool.branch} Branch
+                </span>
+                <BoardBadge board={viewingSchool.board} />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, background: '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid #e2e8f0', marginBottom: 24 }}>
+                <FieldRow label="Address" value={viewingSchool.address} />
+                <FieldRow label="School Contact Email" value={viewingSchool.contactEmail || '—'} />
+                <FieldRow label="School Contact Phone" value={viewingSchool.contactPhone ? `${viewingSchool.countryCode || '+91'} ${viewingSchool.contactPhone}` : '—'} />
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setViewingSchool(null)}
+                  style={{
+                    background: 'transparent',
+                    color: '#64748b',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: 12,
+                    padding: '10px 20px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'Andika, system-ui, sans-serif',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -833,12 +886,10 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
         contactEmail: form.contactEmail || undefined,
         contactPhone: form.contactPhone || undefined,
         countryCode: form.countryCode || undefined,
-        numberOfGrades: form.numberOfGrades ? Number(form.numberOfGrades) : undefined,
-        gradeNames: form.gradeNames.map((name, i) => name || `Grade ${i + 3}`),
       };
       setSchools(p => [...p, newTenant]);
       setSelectedTenant(newTenant);
-      setView('view-tenant');
+      setView('list');
     };
 
     return (
@@ -857,10 +908,6 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
           )}
 
           {step === 1 && (
-            <SchoolFormFields form={form} errors={errors} onChange={changeForm} showGradesOnly={true} allowRemove={true} />
-          )}
-
-          {step === 2 && (
             <div>
               <p style={{ fontSize: 13, color: '#64748b', marginTop: 0, marginBottom: 20 }}>
                 Review the details before adding the school tenant.
@@ -876,9 +923,6 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                 <FieldRow label="Pincode" value={form.pincode} />
                 {form.contactEmail && <FieldRow label="Contact Email" value={form.contactEmail} />}
                 {form.contactPhone && <FieldRow label="Contact Phone" value={`${form.countryCode || '+91'} ${form.contactPhone}`} />}
-                {form.gradeNames && form.gradeNames.length > 0 && (
-                  <FieldRow label="Grade Names" value={form.gradeNames.filter(Boolean).join(', ')} />
-                )}
               </div>
             </div>
           )}
@@ -905,12 +949,6 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
         const allErrors = validateForm(editForm);
         const { numberOfGrades, ...step0Errors } = allErrors;
         e = step0Errors;
-      } else if (editStep === 1) {
-        if (editForm.gradeNames.length === 0) {
-          e.numberOfGrades = 'Please add at least one grade';
-        } else if (editForm.gradeNames.some(g => !g.trim())) {
-          e.numberOfGrades = 'All grade names must be filled';
-        }
       }
       setEditErrors(e);
       if (Object.keys(e).length === 0) setEditStep(s => s + 1);
@@ -932,8 +970,6 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
         contactEmail: editForm.contactEmail || undefined,
         contactPhone: editForm.contactPhone || undefined,
         countryCode: editForm.countryCode || undefined,
-        numberOfGrades: editForm.gradeNames.length,
-        gradeNames: editForm.gradeNames,
       } : s));
       setView('list');
     };
@@ -954,10 +990,6 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
           )}
 
           {editStep === 1 && (
-            <SchoolFormFields form={editForm} errors={editErrors} onChange={changeEditForm} showGradesOnly={true} />
-          )}
-
-          {editStep === 2 && (
             <div>
               <p style={{ fontSize: 13, color: '#64748b', marginTop: 0, marginBottom: 20 }}>
                 Review the details before saving the school tenant changes.
@@ -973,9 +1005,6 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
                 <FieldRow label="Pincode" value={editForm.pincode} />
                 {editForm.contactEmail && <FieldRow label="Contact Email" value={editForm.contactEmail} />}
                 {editForm.contactPhone && <FieldRow label="Contact Phone" value={`${editForm.countryCode || '+91'} ${editForm.contactPhone}`} />}
-                {editForm.gradeNames && editForm.gradeNames.length > 0 && (
-                  <FieldRow label="Grade Names" value={editForm.gradeNames.filter(Boolean).join(', ')} />
-                )}
               </div>
             </div>
           )}
@@ -1175,14 +1204,14 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
       };
 
       setUsers(prev => [...prev, newUser]);
-      setView('view-tenant');
+      setView('list');
     };
 
     return (
       <div style={{ padding: 28 }}>
-        <button onClick={() => setView('view-tenant')}
+        <button onClick={() => setView('list')}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 13, padding: 0, fontFamily: 'Andika, system-ui, sans-serif', marginBottom: 8 }}>
-          ← Back to Tenant Details
+          ← Back to Tenants List
         </button>
 
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1e293b', margin: '0 0 24px' }}>
@@ -1194,7 +1223,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
           <div>
             <label style={lbl}>1. Select Grade <span style={{ color: '#ef4444' }}>*</span></label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-              {getTenantGrades(selectedTenant).map(g => {
+              {GRADES.map(g => {
                 const active = studentGrade === g;
                 return (
                   <button
@@ -1334,7 +1363,7 @@ export default function SchoolsSection({ schools, setSchools, users, setUsers }:
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
-                <NavBtn onClick={() => setView('view-tenant')}>Cancel</NavBtn>
+                <NavBtn onClick={() => setView('list')}>Cancel</NavBtn>
                 <NavBtn primary onClick={handleStudentSubmit}>Save Student User</NavBtn>
               </div>
             </div>

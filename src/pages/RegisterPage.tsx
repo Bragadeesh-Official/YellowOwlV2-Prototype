@@ -32,7 +32,6 @@ export default function RegisterPage() {
 
   const [name, setName] = useState('');
   const [dob, setDob] = useState('');
-  const [age, setAge] = useState('9');
   const [weeklySession, setWeeklySession] = useState('20 minutes');
   const [parentPhone, setParentPhone] = useState('');
   const [parentEmail, setParentEmail] = useState('');
@@ -136,10 +135,18 @@ export default function RegisterPage() {
     }
     setEmailError('');
 
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      calculatedAge--;
+    }
+
     register({
       name: name.trim(),
       dob,
-      age: parseInt(age, 10),
+      age: calculatedAge,
       weeklySession: parseInt(weeklySession, 10),
       parentPhone,
       parentEmail: parentEmail.trim() || undefined,
@@ -260,32 +267,8 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* 3. Age */}
+          {/* 3. Weekly Session Time */}
           <div ref={(el) => addFieldRef(el, 2)}>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Age</label>
-            <select
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
-              style={inputStyle}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#FFEA11';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,234,17,0.25)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#2AD5B4';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              {[9, 10, 11, 12, 13].map((a) => (
-                <option key={a} value={a}>
-                  {a} years old
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 4. Weekly Session Time */}
-          <div ref={(el) => addFieldRef(el, 3)}>
             <label className="block text-sm font-bold text-gray-700 mb-1">
               Weekly Session Time
             </label>
@@ -310,8 +293,8 @@ export default function RegisterPage() {
             </select>
           </div>
 
-          {/* 5. Parent Mobile */}
-          <div ref={(el) => addFieldRef(el, 4)}>
+          {/* 4. Parent Mobile */}
+          <div ref={(el) => addFieldRef(el, 3)}>
             <label className="block text-sm font-bold text-gray-700 mb-1">
               Parent Mobile Number
             </label>
@@ -343,8 +326,8 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* 6. Parent Email */}
-          <div ref={(el) => addFieldRef(el, 5)}>
+          {/* 5. Parent Email */}
+          <div ref={(el) => addFieldRef(el, 4)}>
             <label className="block text-sm font-bold text-gray-700 mb-1">
               Parent Email <span className="text-gray-400 text-xs font-normal"></span>
             </label>
@@ -374,9 +357,9 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* 7. Terms checkbox */}
+          {/* 6. Terms checkbox */}
           <div
-            ref={(el) => addFieldRef(el, 6)}
+            ref={(el) => addFieldRef(el, 5)}
             className="flex items-start gap-3 p-3 rounded-xl"
             style={{ backgroundColor: '#f0fdf9', border: '1.5px solid #2AD5B4' }}
           >
@@ -400,7 +383,7 @@ export default function RegisterPage() {
           </div>
 
           {/* Submit */}
-          <div ref={(el) => addFieldRef(el, 7)}>
+          <div ref={(el) => addFieldRef(el, 6)}>
             <button
               type="submit"
               className="btn-primary w-full"
