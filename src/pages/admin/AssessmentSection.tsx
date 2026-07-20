@@ -6,7 +6,7 @@ interface HistoryItem {
   week: string;
   schoolName: string;
   maxChallenges: number;
-  status: string; // 'Completed' | 'In Progress' | 'Scheduled'
+  status: string; // 'Completed' | 'In Progress' | 'Scheduled' | 'Not Scheduled'
 }
 
 interface AssessmentSectionProps {
@@ -52,7 +52,7 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
         week: 'Week 2',
         schoolName: 'Heritage High School',
         maxChallenges: 6,
-        status: 'Scheduled',
+        status: 'Not Scheduled',
       },
     ];
   });
@@ -98,6 +98,34 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
     }
   };
 
+  // Find highest week number from history
+  let maxWeekNum = 1;
+  history.forEach(item => {
+    const match = item.week.match(/\d+/);
+    if (match) {
+      const num = parseInt(match[0]);
+      if (num > maxWeekNum) maxWeekNum = num;
+    }
+  });
+  const currentWeekStr = `Week ${maxWeekNum}`;
+
+  // For the current week, add virtual 'Not Scheduled' entries for schools not in history for this week
+  const mergedHistory: HistoryItem[] = [...history];
+  schools.forEach(school => {
+    const hasRecord = history.some(
+      item => item.week === currentWeekStr && item.schoolName === school.name
+    );
+    if (!hasRecord) {
+      mergedHistory.push({
+        id: `virtual_${school.id}_${currentWeekStr}`,
+        week: currentWeekStr,
+        schoolName: school.name,
+        maxChallenges: 0,
+        status: 'Not Scheduled',
+      });
+    }
+  });
+
   const handleAssign = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -105,17 +133,6 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
       alert('Please select at least one tenant!');
       return;
     }
-
-    // Find highest week number from history
-    let maxWeekNum = 1;
-    history.forEach(item => {
-      const match = item.week.match(/\d+/);
-      if (match) {
-        const num = parseInt(match[0]);
-        if (num > maxWeekNum) maxWeekNum = num;
-      }
-    });
-    const currentWeekStr = `Week ${maxWeekNum}`;
 
     // Clone existing history
     const updatedHistory = [...history];
@@ -169,21 +186,21 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
   });
 
   // Unique lists from history data for filtering
-  const uniqueWeeks = Array.from(new Set(history.map(item => item.week))).sort();
-  const uniqueTenants = Array.from(new Set(history.map(item => item.schoolName))).sort();
+  const uniqueWeeks = Array.from(new Set(mergedHistory.map(item => item.week))).sort();
+  const uniqueTenants = Array.from(new Set(mergedHistory.map(item => item.schoolName))).sort();
 
   // Apply filters to history
-  const filteredHistory = history.filter(item => {
+  const filteredHistory = mergedHistory.filter(item => {
     const matchesWeek = filterWeek === 'All' || item.week === filterWeek;
     const matchesTenant = filterTenant === 'All' || item.schoolName === filterTenant;
-    
+
     let matchesStatus = true;
     if (filterStatus === 'Active') {
       matchesStatus = item.status === 'In Progress' || item.status === 'Scheduled';
     } else if (filterStatus !== 'All') {
       matchesStatus = item.status === filterStatus;
     }
-    
+
     return matchesWeek && matchesTenant && matchesStatus;
   });
 
@@ -209,7 +226,7 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
 
   return (
     <div style={{ padding: 28, fontFamily: 'Inter, sans-serif' }}>
-      
+
       {/* Top Banner */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 20, marginBottom: 24 }}>
         <div>
@@ -226,7 +243,7 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
       {isConfiguring ? (
         /* WIZARD FLOW CONFIGURATOR */
         <div className="bg-white rounded-2xl overflow-hidden" style={{ padding: 32, border: '1px solid #E2E8F0', boxShadow: '0 4px 20px rgba(42,213,180,0.12)' }}>
-          
+
           {/* Header & Steps Indicator */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30, borderBottom: '1px solid #E2E8F0', paddingBottom: 16 }}>
             <div>
@@ -388,12 +405,47 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
           {/* STEP 2: Set Challenges Count with Custom Counter */}
           {configStep === 'challenges' && (
             <div style={{ maxWidth: 600, margin: '0 auto', padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 16, padding: 18, marginBottom: 30, width: '100%' }}>
-                <h4 style={{ margin: '0 0 8px 0', fontSize: 13, fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>
+              <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 16, padding: 20, marginBottom: 30, width: '100%' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: 13, fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Target Tenants ({selectedSchoolIds.length})
                 </h4>
-                <div style={{ fontSize: 14, color: '#0F172A', fontWeight: 700 }}>
-                  {schools.filter(s => selectedSchoolIds.includes(s.id)).map(s => s.name).join(', ')}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {schools
+                    .filter(s => selectedSchoolIds.includes(s.id))
+                    .map(s => {
+                      const existingRecord = history.find(
+                        item => item.week === currentWeekStr && item.schoolName === s.name
+                      );
+                      const currentStatus = existingRecord ? existingRecord.status : 'Not Scheduled';
+                      return (
+                        <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '10px 14px', borderRadius: 10, border: '1.5px solid #E2E8F0', width: '100%', boxSizing: 'border-box' }}>
+                          <span style={{ fontWeight: 700, color: '#1E293B', fontSize: 14 }}>{s.name}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span
+                              className="px-2.5 py-0.5 rounded-full text-xs font-bold"
+                              style={
+                                currentStatus === 'Completed'
+                                  ? { background: '#f0fdf4', color: '#15803d' }
+                                  : currentStatus === 'In Progress'
+                                    ? { background: '#eff6ff', color: '#1d4ed8' }
+                                    : currentStatus === 'Scheduled'
+                                      ? { background: '#fff7ed', color: '#c2410c' }
+                                      : { background: '#f1f5f9', color: '#64748b' }
+                              }
+                            >
+                              {currentStatus}
+                            </span>
+                            <span style={{ color: '#94A3B8', fontSize: 12 }}>➔</span>
+                            <span
+                              className="px-2.5 py-0.5 rounded-full text-xs font-bold"
+                              style={{ background: '#fff7ed', color: '#c2410c' }}
+                            >
+                              Scheduled
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
 
@@ -402,7 +454,7 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
                   <label htmlFor="counter-wrapper" style={{ fontSize: 13, fontWeight: 800, color: '#475569', display: 'block', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Max Number of Challenges per Tenant
                   </label>
-                  
+
                   {/* Custom Counter Component */}
                   <div id="counter-wrapper" style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
                     <button
@@ -486,7 +538,7 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
       ) : (
         /* PRIMARY CHALLENGE COMPLETION HISTORY WITH FILTERS AND MATCHING DESIGN */
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          
+
           {/* Toolbar with Inline Filters & Action Button */}
           <div className="flex flex-col sm:flex-row gap-3 mb-5 items-center justify-between">
             <div className="flex flex-wrap gap-3">
@@ -531,6 +583,7 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
                 <option value="Completed">Completed</option>
                 <option value="In Progress">In Progress</option>
                 <option value="Scheduled">Scheduled</option>
+                <option value="Not Scheduled">Not Scheduled</option>
               </select>
             </div>
 
@@ -588,7 +641,7 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
 
                           {/* Max Challenges */}
                           <td className="px-5 py-3.5 text-center text-gray-600">
-                            {item.maxChallenges}
+                            {item.maxChallenges === 0 ? '—' : item.maxChallenges}
                           </td>
 
                           {/* Status Badge */}
@@ -599,8 +652,10 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
                                 item.status === 'Completed'
                                   ? { background: '#f0fdf4', color: '#15803d' }
                                   : item.status === 'In Progress'
-                                  ? { background: '#eff6ff', color: '#1d4ed8' }
-                                  : { background: '#fff7ed', color: '#c2410c' }
+                                    ? { background: '#eff6ff', color: '#1d4ed8' }
+                                    : item.status === 'Scheduled'
+                                      ? { background: '#fff7ed', color: '#c2410c' }
+                                      : { background: '#f1f5f9', color: '#64748b' }
                               }
                             >
                               {item.status}
@@ -650,8 +705,8 @@ export default function AssessmentSection({ schools }: AssessmentSectionProps) {
                         key={p}
                         onClick={() => setCurrentPage(p)}
                         className={`px-2.5 py-1 rounded text-xs font-bold border transition-colors ${isCurrent
-                            ? 'bg-teal-500 border-teal-500 text-white'
-                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                          ? 'bg-teal-500 border-teal-500 text-white'
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                           }`}
                       >
                         {p}

@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import { type AdminUser, type School } from '@/mock/adminData';
 import { JUNIOR_WARMUP, SENIOR_WARMUP } from '@/mock/userData';
 
-import { FileDown } from 'lucide-react';
+import { FileDown, Users, CheckCircle2, Clock } from 'lucide-react';
 
 
 interface AnalysisSectionProps {
@@ -19,11 +19,24 @@ export default function AnalysisSection({ users, schools, mode }: AnalysisSectio
   const navigate = useNavigate();
   const [selectedSchoolId, setSelectedSchoolId] = useState('');
   const [selectedGrade, setSelectedGrade] = useState('');
+  const [warmupFilter, setWarmupFilter] = useState<'all' | 'completed' | 'pending'>('all');
 
   // Filter users matching School and Grade
   const filteredUsers = users.filter(
     u => u.usageMode === 'school' && u.schoolId === selectedSchoolId && u.grade === selectedGrade
   );
+
+  const totalCount = filteredUsers.length;
+  const completedCount = filteredUsers.filter(u => u.warmupStatus === 'completed').length;
+  const pendingCount = totalCount - completedCount;
+
+  const displayedUsers = mode === 'warmup'
+    ? filteredUsers.filter(u => {
+        if (warmupFilter === 'completed') return u.warmupStatus === 'completed';
+        if (warmupFilter === 'pending') return u.warmupStatus !== 'completed';
+        return true;
+      })
+    : filteredUsers;
 
   // Compute skill level badge for a user (used in skills mode table)
   const getSkillBadge = (userId: string) => {
@@ -133,7 +146,7 @@ export default function AnalysisSection({ users, schools, mode }: AnalysisSectio
             <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Select Tenant/School</label>
             <select
               value={selectedSchoolId}
-              onChange={e => { setSelectedSchoolId(e.target.value); }}
+              onChange={e => { setSelectedSchoolId(e.target.value); setWarmupFilter('all'); }}
               className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none bg-white focus:border-teal-owl transition-all"
             >
               <option value="">Choose a School...</option>
@@ -145,7 +158,7 @@ export default function AnalysisSection({ users, schools, mode }: AnalysisSectio
             <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Select Grade</label>
             <select
               value={selectedGrade}
-              onChange={e => { setSelectedGrade(e.target.value); }}
+              onChange={e => { setSelectedGrade(e.target.value); setWarmupFilter('all'); }}
               className="w-full border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none bg-white focus:border-teal-owl transition-all"
             >
               <option value="">Choose a Grade...</option>
@@ -179,10 +192,73 @@ export default function AnalysisSection({ users, schools, mode }: AnalysisSectio
             )}
           </div>
 
+          {/* Warm-up Stats & Filters */}
+          {mode === 'warmup' && filteredUsers.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-6 bg-slate-50/40 border-b border-slate-100">
+              {/* Total Card */}
+              <button
+                onClick={() => setWarmupFilter('all')}
+                className={`flex items-center gap-4 p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer bg-white ${
+                  warmupFilter === 'all'
+                    ? 'border-slate-800 ring-2 ring-slate-800/10 shadow-sm scale-[1.02]'
+                    : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                }`}
+              >
+                <div className="p-3 rounded-xl bg-slate-100 transition-colors">
+                  <Users className="text-slate-600" size={20} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Students</p>
+                  <p className="text-2xl font-black text-slate-800">{totalCount}</p>
+                </div>
+              </button>
+
+              {/* Completed Card */}
+              <button
+                onClick={() => setWarmupFilter('completed')}
+                className={`flex items-center gap-4 p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer bg-white ${
+                  warmupFilter === 'completed'
+                    ? 'border-emerald-600 ring-2 ring-emerald-600/10 shadow-sm scale-[1.02]'
+                    : 'border-slate-200 hover:border-emerald-250 hover:shadow-sm'
+                }`}
+              >
+                <div className="p-3 rounded-xl bg-emerald-50 transition-colors">
+                  <CheckCircle2 className="text-emerald-600" size={20} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Finished</p>
+                  <p className="text-2xl font-black text-emerald-600">{completedCount}</p>
+                </div>
+              </button>
+
+              {/* Pending Card */}
+              <button
+                onClick={() => setWarmupFilter('pending')}
+                className={`flex items-center gap-4 p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer bg-white ${
+                  warmupFilter === 'pending'
+                    ? 'border-amber-500 ring-2 ring-amber-500/10 shadow-sm scale-[1.02]'
+                    : 'border-slate-200 hover:border-amber-250 hover:shadow-sm'
+                }`}
+              >
+                <div className="p-3 rounded-xl bg-amber-50 transition-colors">
+                  <Clock className="text-amber-600" size={20} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Pending</p>
+                  <p className="text-2xl font-black text-amber-600">{pendingCount}</p>
+                </div>
+              </button>
+            </div>
+          )}
+
           {/* Student Table */}
           {filteredUsers.length === 0 ? (
             <div className="py-12 text-center text-gray-400 text-xs">
               No students enrolled in this Grade for the selected Tenant.
+            </div>
+          ) : displayedUsers.length === 0 ? (
+            <div className="py-12 text-center text-gray-400 text-xs">
+              No students match the selected warm-up status filter.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -200,7 +276,7 @@ export default function AnalysisSection({ users, schools, mode }: AnalysisSectio
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map((user, idx) => {
+                  {displayedUsers.map((user, idx) => {
                     const badge = mode === 'skills' ? getSkillBadge(user.id) : null;
                     const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
 
