@@ -159,7 +159,7 @@ export default function AdminDashboard() {
           <UsersSection users={users} setUsers={updateUsers} schools={schools} />
         )}
         {section === 'assessment' && (
-          <AssessmentSection schools={schools} />
+          <AssessmentSection schools={schools} users={users} />
         )}
         {section === 'analysis_weekly' && (
           <AnalysisSection users={users} schools={schools} mode="weekly" />
